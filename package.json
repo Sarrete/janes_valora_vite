@@ -15,5 +15,13 @@
   "devDependencies": {
     "netlify-plugin-submit-sitemap": "^0.4.0",
     "react-scripts": "^5.0.1"
+  },
+"overrides": {
+  "svgo": "^2.8.0",
+  "nth-check": "^2.0.1",
+  "postcss": "^8.4.47",
+  "webpack-dev-server": "^4.15.1",
+  "resolve-url-loader": "^5.0.0"
   }
 }
+
