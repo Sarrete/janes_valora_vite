@@ -94,7 +94,7 @@ export async function handler(event) {
     // Generar firma
     const timestamp = Math.floor(Date.now() / 1000);
     const paramsToSign = `folder=${folder}&timestamp=${timestamp}${apiSecret}`;
-    const signature = crypto.createHash('sha1').update(paramsToSign).digest('hex');
+    const signature = crypto.createHash('sha256').update(paramsToSign).digest('hex');
 
     // Preparar datos para Cloudinary
     const formData = new URLSearchParams();
