@@ -1,78 +1,24 @@
-# Dependencias
-node_modules/
-
-# Carpetas de compilación / build
-build/
-dist/
-
-# Cachés de herramientas
-.cache/
-.parcel-cache/
-.turbo/
-.vite/
-.next/            # (por si alguna herramienta o plantilla lo genera)
-.storybook-out/   # salida de storybook (si se usa)
-
-# Cachés de linters/formatters
-.eslintcache
-.stylelintcache
-.prettiercache
-
 # Logs
-logs/
+logs
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 pnpm-debug.log*
+lerna-debug.log*
 
-# Entornos (variables sensibles)
-.env
-.env.local
-.env.*.local
-.env.development
-.env.test
-.env.production
+node_modules
+dist
+dist-ssr
+*.local
 
-# Cobertura de tests
-coverage/
-
-# Artefactos de tests E2E (si se usan)
-cypress/videos/
-cypress/screenshots/
-playwright-report/
-test-results/
-.playwright/
-
-# Jest
-.jest/
-jest-cache/
-.cache/jest/
-
-# Archivos temporales generales
-*.tmp
-*.temp
-*.swp
-*.swo
-
-# Archivos del sistema
-.DS_Store
-Thumbs.db
-
-# Configuración de editores/IDE
-.idea/
+# Editor directories and files
 .vscode/*
 !.vscode/extensions.json
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-
-# Netlify (CLI y metadatos locales)
-.netlify/
-
-# Locks de otros gestores (si no los usas)
-yarn.lock
-pnpm-lock.yaml
-
-# Artefactos de empaquetado
-*.tgz
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
