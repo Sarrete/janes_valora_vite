@@ -286,6 +286,14 @@ header {
 
 }
 
+#popup-video {
+    display: none;
+  }
+  
+  #popup-video-caption {
+    display: block;
+  }
+  
 /* Estilos generales para la descripción */
 .popup-text {
     margin-top: 20px;
@@ -470,6 +478,11 @@ element.style {
 #reviews-controls button:hover {
   background: #0056b3;
 }
+
+#reviews-controls {
+    text-align: center;
+    margin-top: 1rem;
+  }
 
 /* Modo edición: cuando el usuario está votando */
 .stars .star {

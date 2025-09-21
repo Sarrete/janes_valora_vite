@@ -210,7 +210,7 @@
       required 
       maxlength="50"
       data-i18n-placeholder="reviews.placeholderName"
-      placeholder="">
+      placeholder="tu nombre">
 
     <!-- Valoración -->
     <label data-i18n="reviews.rating"></label>
@@ -230,10 +230,10 @@
       rows="3" 
       maxlength="500"
       data-i18n-placeholder="reviews.placeholderComment"
-      placeholder=""></textarea>
+      placeholder="reseña"></textarea>
 
     <!-- Foto -->
-    <label for="photo" data-i18n="reviews.photo"></label>
+    <label for="photo" data-i18n="reviews.photo" aria-label="Foto (opcional)"></label>
     <input 
       type="file" 
       id="photo" 
@@ -241,7 +241,7 @@
       accept="image/png, image/jpeg, image/webp">
 
     <!-- Botón -->
-    <button type="submit" data-i18n="reviews.submit"></button>
+    <button type="submit" data-i18n="reviews.submit" aria-label="Enviar valoración"></button>
   </form>
 
   <hr>
@@ -252,9 +252,13 @@
   </div>
 
   <!-- Botón ver todas -->
-  <div id="reviews-controls" style="text-align:center; margin-top:1rem;">
-    <button id="verTodasBtn" type="button" data-i18n="reviews.viewAll"></button>
+  <div id="reviews-controls">
+    <button id="verTodasBtn" type="button" data-i18n="reviews.viewAll">
+      Ver todas las valoraciones
+    </button>
   </div>
+  
+  
 </section>
       
  <!-- Sección de contacto -->
@@ -290,14 +294,16 @@
         <figcaption id="popup-caption" class="photo-description"></figcaption>
     </figure>
     
-       <!-- Contenedor del video -->
-        <video id="popup-video" controls style="display:none;">
-            <source id="popup-video-source" src="/multimedia/3d/1/video1.mp4" type="video/mp4">
-            <span data-i18n="popup_video_error">Tu navegador no soporta el video.</span>
-        </video>
-    <figure>
-        <figcaption id="popup-video-caption" class="video-description" style="display:block;"></figcaption>
-    </figure>    
+      <!-- Contenedor del video -->
+<video id="popup-video" controls>
+    <source id="popup-video-source" src="/multimedia/3d/1/video1.mp4" type="video/mp4">
+    <span data-i18n="popup_video_error">Tu navegador no soporta el video.</span>
+  </video>
+  
+  <figure>
+    <figcaption id="popup-video-caption" class="video-description"></figcaption>
+  </figure>
+    
 
         <!-- Flechas de navegación -->
        <!-- Flecha para imagen anterior -->
