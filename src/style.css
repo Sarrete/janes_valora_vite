@@ -193,7 +193,7 @@ header {
     position: fixed;   
     width: 442px;
     height: 425px;
-    background: url('../images/Gear.png') no-repeat center center;
+    background: url('/images/gear.png') no-repeat center center;
     background-size: contain;
     background-color: transparent;
 }

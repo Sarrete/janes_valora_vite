@@ -150,10 +150,17 @@
                 </figure>
         
         <!-- Octaba imagen -->
-        <figure class="image-container" data-images='["images/3d/1/imagen1.jpeg","images/3d/1/imagen2.jpeg"]' data-video="multimedia/3D/1/video1.mp4">
-            <img src="https://janesenginyeria.netlify.app/images/3d/1/imagen1.jpeg" alt="Impresion de materiales flexibles, goma, juntas, etc..." loading="lazy">
-            <figcaption class="image-caption" data-i18n="imagen_descripcion_8">Impresion de materiales flexibles, goma, juntas, etc...</figcaption>
-        </figure>
+       <figure class="image-container" 
+        data-images='["/images/3d/1/imagen1.jpeg","/images/3d/1/imagen2.jpeg"]' 
+        data-video="/multimedia/3d/1/video1.mp4">
+    <img src="/images/3d/1/imagen1.jpeg" 
+         alt="Impresion de materiales flexibles, goma, juntas, etc..." 
+         loading="lazy">
+    <figcaption class="image-caption" data-i18n="imagen_descripcion_8">
+        Impresion de materiales flexibles, goma, juntas, etc...
+    </figcaption>
+</figure>
+
         
         <!-- 9 imagen -->
         <figure class="image-container" data-images='["images/3d/suport_manillar/Sm.jpeg","images/3d/suport_manillar/Sm_1.jpeg", "images/3d/suport_manillar/Sm_2.jpeg","images/3d/suport_manillar/Sm_3.jpeg", "images/3d/suport_manillar/Sm_4.jpeg" ]'>
@@ -313,12 +320,11 @@
     </footer>
 </div>
 
-    <!-- JavaScript -->
 <!-- JavaScript principal -->
-<script src="js/script.js" defer></script>
+<script type="module" src="/src/script.js"></script>
 
 <!-- Script único de valoraciones -->
-<script src="/valoraciones.js" type="module"></script>
+<script type="module" src="/src/valoraciones.js"></script>
 
 </body>
 </html>
