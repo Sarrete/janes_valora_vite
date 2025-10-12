@@ -1,20 +1,39 @@
-// IMPORTS FIREBASE
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js';
-import { getFirestore, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot } from 'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js';
+// IMPORTS FIREBASE (desde npm, no CDN)
+import { initializeApp } from "firebase/app";
+import { 
+  getFirestore, 
+  connectFirestoreEmulator, 
+  collection, 
+  addDoc, 
+  serverTimestamp, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot 
+} from "firebase/firestore";
 
-// CONFIGURACIÓN FIREBASE (pública, no es secreta)
+// CONFIGURACIÓN FIREBASE usando variables de entorno
 const firebaseConfig = {
-  apiKey: "__FIREBASE_API_KEY__",
-  authDomain: "valoraciones-a8350.firebaseapp.com",
-  projectId: "valoraciones-a8350",
-  storageBucket: "valoraciones-a8350.appspot.com",
-  messagingSenderId: "286602851936",
-  appId: "1:286602851936:web:e1d4d11bfe1391dd1c7505"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
 // INICIALIZAR APP Y SERVICIOS
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
+
+// 🔑 Conectar al emulador SOLO en desarrollo
+if (import.meta.env.DEV) {
+  connectFirestoreEmulator(db, "localhost", 8080);
+  console.log("🔥 Conectado al Firestore Emulator en localhost:8080");
+}
+
+export { db, collection, addDoc, serverTimestamp, query, where, orderBy, onSnapshot };
+
 
 // ELEMENTOS DOM
 const form = document.getElementById('ratingForm');
