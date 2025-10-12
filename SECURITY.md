@@ -20,7 +20,7 @@ Si encuentras una vulnerabilidad de seguridad en este proyecto, **no abras un is
 En su lugar, utiliza una de estas opciones:
 
 1. **[Private vulnerability reporting](../../security/advisories/new)** de GitHub (recomendado).
-2. Contacto directo con los mantenedores a través del correo: **[Janesvalora@gmail.com]**
+2. Contacto directo con los mantenedores a través del correo: [Janesvalora@gmail.com](mailto:Janesvalora@gmail.com)
 
 Por favor incluye en tu reporte:
 - Descripción clara del problema.
