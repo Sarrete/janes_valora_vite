@@ -32,11 +32,6 @@ signInAnonymously(auth)
   .then(() => console.log("Usuario anónimo autenticado:", auth.currentUser.uid))
   .catch((error) => console.error("Error en autenticación anónima:", error));
 
-
-// INICIALIZAR APP Y SERVICIOS
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-
 // 🔑 Conectar al emulador SOLO en desarrollo
 if (import.meta.env.DEV) {
   connectFirestoreEmulator(db, "localhost", 8080);
