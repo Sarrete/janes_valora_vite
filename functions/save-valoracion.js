@@ -1,15 +1,18 @@
 // functions/save-valoracion.js
-import { initializeApp, applicationDefault } from "firebase-admin/app";
+import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getFirestore } from "firebase-admin/firestore";
 
-// Inicializar Firebase Admin solo una vez
-const app = initializeApp({
-  credential: applicationDefault()
-});
-const db = getFirestore();
+let db;
 
-// Ventana de tiempo en ms (ej. 1 minuto)
-const TIME_WINDOW = 60 * 1000;
+if (!getApps().length) {
+  const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+  initializeApp({
+    credential: cert(serviceAccount)
+  });
+  db = getFirestore();
+} else {
+  db = getFirestore();
+}
 
 export async function handler(event) {
   try {
@@ -17,37 +20,32 @@ export async function handler(event) {
       return { statusCode: 405, body: "Method Not Allowed" };
     }
 
-    const { uid, place, rating, comentario } = JSON.parse(event.body || "{}");
+    const { uid, place, rating, comentario, nombre, photoURL } = JSON.parse(event.body || "{}");
 
-    // Validar campos obligatorios
-    if (!uid || !place || !rating) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: "Faltan campos obligatorios" })
-      };
+    if (!uid || !place || !rating || !nombre) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Faltan campos obligatorios" }) };
     }
 
-    // Filtro de tiempo: comprobar si ya valoró en el último minuto
+    // Filtro de tiempo: 1 valoración por minuto
     const snapshot = await db.collection("valoraciones")
       .where("uid", "==", uid)
       .where("place", "==", place)
-      .where("timestamp", ">", Date.now() - TIME_WINDOW)
+      .where("timestamp", ">", Date.now() - 60 * 1000)
       .get();
 
     if (!snapshot.empty) {
-      return {
-        statusCode: 429,
-        body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" })
-      };
+      return { statusCode: 429, body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" }) };
     }
 
-    // Guardar nueva valoración
     const docRef = await db.collection("valoraciones").add({
       uid,
       place,
+      nombre,
+      comentario: comentario || "Sin comentario",
       rating,
-      comentario: comentario || "",
-      timestamp: Date.now()
+      photoURL: photoURL || null,
+      timestamp: Date.now(),
+      aprobado: false
     });
 
     return {
@@ -57,9 +55,6 @@ export async function handler(event) {
 
   } catch (err) {
     console.error("Error en save-valoracion:", err);
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: err.message || "Error interno" })
-    };
+    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
   }
 }
