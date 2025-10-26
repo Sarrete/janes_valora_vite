@@ -29,11 +29,20 @@ export async function handler(event) {
       return { statusCode: 429, body: JSON.stringify({ error: 'Demasiadas solicitudes, espera un momento.' }) };
     }
 
-    // Validar variables de entorno
+    // 🔎 Logs de depuración de variables de entorno
+    console.log("ENV present keys:", Object.keys(process.env)
+      .filter(k => k.startsWith("CLOUDINARY_") || k === "TURNSTILE_SECRET_KEY"));
+
     const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
     const apiKey = process.env.CLOUDINARY_API_KEY;
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
     const folder = 'valoraciones';
+
+    console.log("Cloudinary env check:", {
+      cloudName: cloudName || "MISSING",
+      apiKey: apiKey ? "OK" : "MISSING",
+      apiSecret: apiSecret ? "OK" : "MISSING",
+    });
 
     if (!cloudName || !apiKey || !apiSecret) {
       return {
@@ -132,6 +141,7 @@ export async function handler(event) {
     };
 
   } catch (err) {
+    console.error("Upload-image error:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message || 'Error interno' })
