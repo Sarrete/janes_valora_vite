@@ -129,16 +129,24 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-    // Guardar en Firestore con UID
-    await addDoc(collection(db, "valoraciones"), {
-      uid: currentUser.uid, // 👈 cumple reglas
-      nombre: name,
-      comentario: comment || "Sin comentario",
-      rating: currentRating,
-      photoURL: photoURL || null,
-      timestamp: serverTimestamp(),
-      aprobado: false
-    });
+   // Guardar valoración vía Netlify Function (con filtros backend)
+const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    uid: currentUser.uid,
+    place: "default", // 👈 si tienes un campo lugar, cámbialo por el real
+    nombre: name,
+    comentario: comment || "Sin comentario",
+    rating: currentRating,
+    photoURL: photoURL || null
+  })
+});
+
+const dataValoracion = await resValoracion.json();
+if (!resValoracion.ok) {
+  throw new Error(dataValoracion.error || "Error guardando valoración");
+}
 
     // Enviar email vía Netlify Function
     fetch("/.netlify/functions/send-email", {
