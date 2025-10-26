@@ -22,6 +22,17 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
+// 🔎 Depuración: imprime todas las variables
+console.log("Firebase config cargado:", {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID
+});
+
+
 // INICIALIZAR APP Y SERVICIOS
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
