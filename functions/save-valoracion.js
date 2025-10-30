@@ -26,13 +26,6 @@ if (!getApps().length) {
     const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
     initializeApp({ credential: cert(serviceAccount) });
     db = getFirestore();
-
-    // 👉 Conectar al emulador si estamos en local
-    if (process.env.NETLIFY_DEV) {
-      const { connectFirestoreEmulator } = await import("firebase/firestore");
-      connectFirestoreEmulator(db, "127.0.0.1", 8080);
-      console.log("⚡ Conectado al emulador de Firestore en localhost:8080");
-    }
   } else {
     throw new Error("FIREBASE_SERVICE_ACCOUNT no está definido");
   }
