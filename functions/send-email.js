@@ -3,7 +3,6 @@ import nodemailer from 'nodemailer';
 
 export async function handler(event) {
   try {
-    // Solo aceptar POST
     if (event.httpMethod !== 'POST') {
       return {
         statusCode: 405,
@@ -15,25 +14,20 @@ export async function handler(event) {
     // Parsear datos del body
     const { nombre, comentario, rating } = JSON.parse(event.body || '{}');
 
-    if (!nombre || !comentario || !rating) {
+    if (!nombre || typeof rating === 'undefined') {
       console.warn("⚠️ Datos incompletos recibidos:", { nombre, comentario, rating });
       return {
         statusCode: 400,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Faltan datos' })
+        body: JSON.stringify({ error: 'Faltan datos obligatorios' })
       };
     }
 
+    // Si comentario viene vacío, usar un valor por defecto
+    const safeComentario = comentario && comentario.trim() !== '' ? comentario : 'Sin comentario';
+
     // Leer credenciales de entorno
     const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NOTIFY_EMAIL } = process.env;
-
-    console.log("🔎 Variables de entorno detectadas:", {
-      SMTP_HOST,
-      SMTP_PORT,
-      SMTP_USER,
-      SMTP_PASS: SMTP_PASS ? "***" : "MISSING",
-      NOTIFY_EMAIL
-    });
 
     if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !NOTIFY_EMAIL) {
       console.error("❌ Faltan variables de entorno");
@@ -44,27 +38,18 @@ export async function handler(event) {
       };
     }
 
-    // Configuración del transporte SMTP
     const transporter = nodemailer.createTransport({
       host: SMTP_HOST,
       port: Number(SMTP_PORT),
-      secure: Number(SMTP_PORT) === 465, // true si es 465
+      secure: Number(SMTP_PORT) === 465,
       auth: {
         user: SMTP_USER,
         pass: SMTP_PASS
       }
     });
 
-    // Verificar conexión SMTP antes de enviar
-    try {
-      await transporter.verify();
-      console.log("✅ Conexión SMTP verificada correctamente");
-    } catch (verifyErr) {
-      console.error("❌ Error verificando conexión SMTP:", verifyErr);
-      throw verifyErr;
-    }
+    await transporter.verify();
 
-    // Enviar correo
     const info = await transporter.sendMail({
       from: `"Valoraciones Web" <${SMTP_USER}>`,
       to: NOTIFY_EMAIL,
@@ -72,7 +57,7 @@ export async function handler(event) {
       html: `
         <h2>Nueva valoración</h2>
         <p><strong>Nombre:</strong> ${nombre}</p>
-        <p><strong>Comentario:</strong> ${comentario}</p>
+        <p><strong>Comentario:</strong> ${safeComentario}</p>
         <p><strong>Rating:</strong> ${rating} ⭐</p>
       `
     });
@@ -87,7 +72,6 @@ export async function handler(event) {
 
   } catch (err) {
     console.error("❌ Error enviando correo:", err.message);
-    console.error("Stack trace:", err.stack);
     return {
       statusCode: 500,
       headers: { 'Content-Type': 'application/json' },
