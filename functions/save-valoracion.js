@@ -134,12 +134,11 @@ export async function handler(event) {
           };
         }
 
-        if (!url.pathname.includes("/image/upload/valoraciones/")) {
+        const regex = /^\/image\/upload\/(v\d+\/)?valoraciones\//;
+        if (!regex.test(url.pathname)) {
           return {
             statusCode: 400,
-            body: JSON.stringify({
-              error: "La imagen no proviene del preset autorizado",
-            }),
+            body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
           };
         }
 
