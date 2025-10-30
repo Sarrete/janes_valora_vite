@@ -136,7 +136,7 @@ export async function handler(event) {
         }
 
         // 3. Debe ser tu cloud y carpeta "valoraciones" o "valoraciones_janes"
-        const regex = /^\/image\/upload\/(v\d+\/)?valoraciones(_janes)?\//;
+        const regex = /^\/dscez2e0d\/image\/upload\/(v\d+\/)?valoraciones(_janes)?\//;
         if (!regex.test(url.pathname)) {
           console.error("❌ URL no coincide con regex:", url.pathname);
           return {
