@@ -114,42 +114,39 @@ export async function handler(event) {
     let safePhotoURL = null;
     if (photoURL && typeof photoURL === "string") {
       try {
-        const url = new URL(photoURL);
+  const url = new URL(photoURL);
 
-        if (url.protocol !== "https:") {
-          return {
-            statusCode: 400,
-            body: JSON.stringify({
-              error: "La URL de la imagen debe ser HTTPS",
-            }),
-          };
-        }
+  // 1. Debe ser HTTPS
+  if (url.protocol !== "https:") {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "La URL debe ser HTTPS" }),
+    };
+  }
 
-        if (!url.hostname.endsWith("res.cloudinary.com")) {
-          return {
-            statusCode: 400,
-            body: JSON.stringify({
-              error: "Solo se permiten imágenes de Cloudinary",
-            }),
-          };
-        }
+  // 2. Debe ser de Cloudinary
+  if (url.hostname !== "res.cloudinary.com") {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "Solo se permiten imágenes de Cloudinary" }),
+    };
+  }
 
-        const regex = /^\/image\/upload\/(v\d+\/)?valoraciones\//;
-        if (!regex.test(url.pathname)) {
-          return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
-          };
-        }
+  // 3. Debe ser tu cloud y carpeta "valoraciones", con versión opcional
+  const regex = new RegExp(`^/dscez2e0d/image/upload/(v\\d+/)?valoraciones/`);
+  if (!regex.test(url.pathname)) {
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
+    };
+  }
 
-        safePhotoURL = photoURL;
-      } catch {
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: "URL de imagen inválida" }),
-        };
-      }
-    }
+} catch {
+  return {
+    statusCode: 400,
+    body: JSON.stringify({ error: "URL de imagen inválida" }),
+  };
+}
 
     // --- Rate limiting: 1 valoración por minuto ---
     const haceUnMinuto = Timestamp.fromMillis(Date.now() - 60 * 1000);
