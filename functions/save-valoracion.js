@@ -134,7 +134,7 @@ export async function handler(event) {
           };
         }
 
-        if (!url.pathname.includes("/image/upload/valoraciones_janes/")) {
+        if (!url.pathname.includes("/image/upload/valoraciones/")) {
           return {
             statusCode: 400,
             body: JSON.stringify({
