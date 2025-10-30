@@ -112,49 +112,61 @@ export async function handler(event) {
       };
     }
 
-    // --- Validación de photoURL (solo Cloudinary con preset valoraciones/valoraciones_janes) ---
-    let safePhotoURL = null;
-    if (photoURL && typeof photoURL === "string") {
-      try {
-        const url = new URL(photoURL);
-        console.log("🔗 Pathname:", url.pathname);
+ // --- Validación de photoURL (solo Cloudinary con preset valoraciones/valoraciones_janes) ---
+let safePhotoURL = null;
+if (photoURL && typeof photoURL === "string") {
+  try {
+    const url = new URL(photoURL);
+    console.log("🔗 Pathname:", url.pathname);
 
-        // 1. Debe ser HTTPS
-        if (url.protocol !== "https:") {
-          return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "La URL debe ser HTTPS" }),
-          };
-        }
-
-        // 2. Debe ser de Cloudinary
-        if (url.hostname !== "res.cloudinary.com") {
-          return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "Solo se permiten imágenes de Cloudinary" }),
-          };
-        }
-
-        // 3. Debe ser tu cloud y carpeta "valoraciones" o "valoraciones_janes"
-        const regex = /^\/dcsez2e0d\/image\/upload\/(v\d+\/)?valoraciones(_janes)?\//;
-        if (!regex.test(url.pathname)) {
-          console.error("❌ URL no coincide con regex:", url.pathname);
-          return {
-            statusCode: 400,
-            body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
-          };
-        }
-
-        // ✅ Si pasa todas las validaciones, asignamos
-        safePhotoURL = photoURL;
-      } catch (err) {
-        console.error("❌ Error parseando URL:", err);
-        return {
-          statusCode: 400,
-          body: JSON.stringify({ error: "URL de imagen inválida" }),
-        };
-      }
+    // 1. Debe ser HTTPS
+    if (url.protocol !== "https:") {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "La URL debe ser HTTPS" }),
+      };
     }
+
+    // 2. Debe ser de Cloudinary
+    if (url.hostname !== "res.cloudinary.com") {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Solo se permiten imágenes de Cloudinary" }),
+      };
+    }
+
+    // 3. Debe ser tu cloud y carpeta "valoraciones" o "valoraciones_janes"
+    const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
+    if (!cloudName) {
+      console.error("❌ CLOUDINARY_CLOUD_NAME no está definido en el entorno");
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Configuración de Cloudinary incompleta" }),
+      };
+    }
+
+    // Escapar caracteres especiales del cloudName
+    const escapedCloud = cloudName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(`^/${escapedCloud}/image/upload/(v\\d+/)?valoraciones(_janes)?/`);
+
+    if (!regex.test(url.pathname)) {
+      console.error("❌ URL no coincide con regex:", url.pathname);
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
+      };
+    }
+
+    // ✅ Si pasa todas las validaciones, asignamos
+    safePhotoURL = photoURL;
+  } catch (err) {
+    console.error("❌ Error parseando URL:", err);
+    return {
+      statusCode: 400,
+      body: JSON.stringify({ error: "URL de imagen inválida" }),
+    };
+  }
+}
 
     // --- Rate limiting: 1 valoración por minuto ---
     const haceUnMinuto = Timestamp.fromMillis(Date.now() - 60 * 1000);
