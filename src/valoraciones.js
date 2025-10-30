@@ -4,15 +4,28 @@ import {
   getFirestore,
   connectFirestoreEmulator,
   collection,
-  addDoc,
-  serverTimestamp,
   query,
   where,
   orderBy,
-  onSnapshot,
-  getDocs
+  onSnapshot
 } from "firebase/firestore";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
+
+// 🔐 Sanitización y validación de texto
+const INVISIBLES = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F]/g;
+const DANGEROUS = /<\s*\/?\s*(script|img|svg|iframe|object|embed|link|style)\b|on\w+\s*=|javascript:|data:/i;
+
+function sanitizeText(input) {
+  if (!input) return '';
+  return String(input)
+    .replace(INVISIBLES, '')
+    .replace(/[\r\n]+/g, ' ')
+    .trim();
+}
+
+function isSafeText(input) {
+  return !DANGEROUS.test(input);
+}
 
 // CONFIGURACIÓN FIREBASE usando variables de entorno
 const firebaseConfig = {
@@ -101,12 +114,17 @@ form.addEventListener("submit", async (e) => {
   submitBtn.textContent = "Enviando...";
 
   try {
-    const name = document.getElementById("name").value.trim();
-    const comment = document.getElementById("comment").value.trim();
+    const rawName = document.getElementById("name").value;
+    const rawComment = document.getElementById("comment").value;
+    const name = sanitizeText(rawName);
+    const comment = sanitizeText(rawComment);
     const photoFile = document.getElementById("photo").files[0];
 
     if (!name) throw new Error("Por favor, ingresa tu nombre.");
     if (currentRating === 0) throw new Error("Por favor, selecciona una valoración.");
+    if (!isSafeText(name) || !isSafeText(comment)) {
+      throw new Error("El texto contiene contenido potencialmente peligroso.");
+    }
 
     // Validación de imagen
     const MAX_BYTES = 5 * 1024 * 1024;
@@ -129,26 +147,24 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-   // Guardar valoración vía Netlify Function (con filtros backend)
-const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    uid: currentUser.uid,
-    place: "default", // 👈 si tienes un campo lugar, cámbialo por el real
-    nombre: name,
-    comentario: comment || "Sin comentario",
-    rating: currentRating,
-    photoURL: photoURL || null
-  })
-});
+    const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: currentUser.uid,
+        place: "default",
+        nombre: name,
+        comentario: comment || "Sin comentario",
+        rating: currentRating,
+        photoURL: photoURL || null
+      })
+    });
 
-const dataValoracion = await resValoracion.json();
-if (!resValoracion.ok) {
-  throw new Error(dataValoracion.error || "Error guardando valoración");
-}
+    const dataValoracion = await resValoracion.json();
+    if (!resValoracion.ok) {
+      throw new Error(dataValoracion.error || "Error guardando valoración");
+    }
 
-    // Enviar email vía Netlify Function
     fetch("/.netlify/functions/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -204,7 +220,7 @@ function renderReviews() {
     div.classList.add("review-card");
 
     const h3 = document.createElement("h3");
-    h3.textContent = r.nombre;
+    h3.textContent = sanitizeText(r.nombre);
     div.appendChild(h3);
 
     const starsP = document.createElement("p");
@@ -214,7 +230,7 @@ function renderReviews() {
 
     const p = document.createElement("p");
     p.classList.add("review-text");
-    const comentarioSeguro = String(r.comentario);
+    const comentarioSeguro = sanitizeText(String(r.comentario));
     const textoCorto =
       comentarioSeguro.length > 120
         ? comentarioSeguro.slice(0, 120) + "..."
@@ -222,7 +238,7 @@ function renderReviews() {
     p.textContent = r.expanded ? comentarioSeguro : textoCorto;
     div.appendChild(p);
 
-    if (comentarioSeguro.length > 120) {
+       if (comentarioSeguro.length > 120) {
       const btnVerMas = document.createElement("button");
       btnVerMas.classList.add("ver-mas");
       btnVerMas.type = "button";
