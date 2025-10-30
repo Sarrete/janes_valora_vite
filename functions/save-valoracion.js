@@ -1,6 +1,6 @@
 // functions/save-valoracion.js
 import { initializeApp, cert, getApps } from "firebase-admin/app";
-import { getFirestore } from "firebase-admin/firestore";
+import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 
 let db;
 
@@ -27,14 +27,18 @@ export async function handler(event) {
     }
 
     // Filtro de tiempo: 1 valoración por minuto
+    const haceUnMinuto = Timestamp.fromMillis(Date.now() - 60 * 1000);
     const snapshot = await db.collection("valoraciones")
       .where("uid", "==", uid)
       .where("place", "==", place)
-      .where("timestamp", ">", Date.now() - 60 * 1000)
+      .where("timestamp", ">", haceUnMinuto)
       .get();
 
     if (!snapshot.empty) {
-      return { statusCode: 429, body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" }) };
+      return {
+        statusCode: 429,
+        body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" })
+      };
     }
 
     const docRef = await db.collection("valoraciones").add({
@@ -44,7 +48,7 @@ export async function handler(event) {
       comentario: comentario || "Sin comentario",
       rating,
       photoURL: photoURL || null,
-      timestamp: Date.now(),
+      timestamp: FieldValue.serverTimestamp(), // ✅ timestamp oficial
       aprobado: false
     });
 
@@ -55,6 +59,9 @@ export async function handler(event) {
 
   } catch (err) {
     console.error("Error en save-valoracion:", err);
-    return { statusCode: 500, body: JSON.stringify({ error: err.message }) };
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: err.message })
+    };
   }
 }
