@@ -43,6 +43,8 @@ export async function handler(event) {
       event.body || "{}"
     );
 
+    console.log("📦 Body recibido:", { uid, place, rating, comentario, nombre, photoURL });
+
     // --- Validaciones obligatorias ---
     if (!uid || !place || typeof rating === "undefined" || !nombre) {
       return {
@@ -110,43 +112,49 @@ export async function handler(event) {
       };
     }
 
-    // --- Validación de photoURL (solo Cloudinary con preset valoraciones_janes) ---
+    // --- Validación de photoURL (solo Cloudinary con preset valoraciones/valoraciones_janes) ---
     let safePhotoURL = null;
     if (photoURL && typeof photoURL === "string") {
       try {
-  const url = new URL(photoURL);
+        const url = new URL(photoURL);
+        console.log("🔗 Pathname:", url.pathname);
 
-  // 1. Debe ser HTTPS
-  if (url.protocol !== "https:") {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "La URL debe ser HTTPS" }),
-    };
-  }
+        // 1. Debe ser HTTPS
+        if (url.protocol !== "https:") {
+          return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "La URL debe ser HTTPS" }),
+          };
+        }
 
-  // 2. Debe ser de Cloudinary
-  if (url.hostname !== "res.cloudinary.com") {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "Solo se permiten imágenes de Cloudinary" }),
-    };
-  }
+        // 2. Debe ser de Cloudinary
+        if (url.hostname !== "res.cloudinary.com") {
+          return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "Solo se permiten imágenes de Cloudinary" }),
+          };
+        }
 
-  // 3. Debe ser tu cloud y carpeta "valoraciones", con versión opcional
- const regex = /^\/image\/upload\/(v\d+\/)?valoraciones(_janes)?\//;
-  if (!regex.test(url.pathname)) {
-    return {
-      statusCode: 400,
-      body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
-    };
-  }
+        // 3. Debe ser tu cloud y carpeta "valoraciones" o "valoraciones_janes"
+        const regex = /^\/image\/upload\/(v\d+\/)?valoraciones(_janes)?\//;
+        if (!regex.test(url.pathname)) {
+          console.error("❌ URL no coincide con regex:", url.pathname);
+          return {
+            statusCode: 400,
+            body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }),
+          };
+        }
 
-} catch {
-  return {
-    statusCode: 400,
-    body: JSON.stringify({ error: "URL de imagen inválida" }),
-  };
-}
+        // ✅ Si pasa todas las validaciones, asignamos
+        safePhotoURL = photoURL;
+      } catch (err) {
+        console.error("❌ Error parseando URL:", err);
+        return {
+          statusCode: 400,
+          body: JSON.stringify({ error: "URL de imagen inválida" }),
+        };
+      }
+    }
 
     // --- Rate limiting: 1 valoración por minuto ---
     const haceUnMinuto = Timestamp.fromMillis(Date.now() - 60 * 1000);
@@ -178,12 +186,14 @@ export async function handler(event) {
       aprobado: false, // 🔒 siempre forzado
     });
 
+    console.log("✅ Documento guardado con ID:", docRef.id);
+
     return {
       statusCode: 200,
       body: JSON.stringify({ id: docRef.id, success: true }),
     };
   } catch (err) {
-    console.error("Error en save-valoracion:", err);
+    console.error("❌ Error en save-valoracion:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message }),
