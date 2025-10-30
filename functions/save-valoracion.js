@@ -133,7 +133,7 @@ export async function handler(event) {
   }
 
   // 3. Debe ser tu cloud y carpeta "valoraciones", con versión opcional
-  const regex = new RegExp(`^/dscez2e0d/image/upload/(v\\d+/)?valoraciones/`);
+ const regex = /^\/image\/upload\/(v\d+\/)?valoraciones(_janes)?\//;
   if (!regex.test(url.pathname)) {
     return {
       statusCode: 400,
