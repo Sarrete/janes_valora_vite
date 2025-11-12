@@ -200,7 +200,7 @@
   <h2 data-i18n="reviews.title"></h2>
 
   <!-- Formulario -->
-  <form id="ratingForm" class="rating-form" novalidate>
+  <form id="ratingForm" class="rating-form">
     <!-- Nombre -->
     <label for="name" data-i18n="reviews.name"></label>
     <input 
@@ -214,12 +214,12 @@
 
     <!-- Valoración -->
     <label data-i18n="reviews.rating"></label>
-    <div id="ratingStars" class="stars" role="radiogroup" aria-label="Valoración">
-      <button type="button" class="star" aria-label="1 estrella">★</button>
-      <button type="button" class="star" aria-label="2 estrellas">★</button>
-      <button type="button" class="star" aria-label="3 estrellas">★</button>
-      <button type="button" class="star" aria-label="4 estrellas">★</button>
-      <button type="button" class="star" aria-label="5 estrellas">★</button>
+    <div id="ratingStars" class="stars">
+      <span class="star">★</span>
+      <span class="star">★</span>
+      <span class="star">★</span>
+      <span class="star">★</span>
+      <span class="star">★</span>
     </div>
 
     <!-- Comentario -->
@@ -240,8 +240,11 @@
       name="photo" 
       accept="image/png, image/jpeg, image/webp">
 
+    <!-- reCAPTCHA invisible -->
+    <input type="hidden" id="recaptchaToken" name="recaptchaToken">
+
     <!-- Botón -->
-    <button type="submit" data-i18n="reviews.submit" aria-label="Enviar valoración">Enviar</button>
+    <button type="submit" data-i18n="reviews.submit" aria-label="Enviar valoración"></button>
   </form>
 
   <hr>
@@ -257,31 +260,66 @@
       Ver todas las valoraciones
     </button>
   </div>
-
-  <!-- Carga segura de reCAPTCHA en runtime (NO incrusta clave en el bundle).
-       El valor window.RECAPTCHA_SITE_KEY debe establecerse desde tu JS (p. ej. import.meta.env en main.js). -->
-  <script>
-    (function() {
-      try {
-        var key = window.RECAPTCHA_SITE_KEY; // debe establecerse en runtime desde tu JS
-        if (!key) {
-          // No hay clave: no cargamos reCAPTCHA ahora (no es un error)
-          console.warn("reCAPTCHA site key no definida en runtime (window.RECAPTCHA_SITE_KEY).");
-          return;
-        }
-        // Carga dinámica del script con la key en runtime
-        var s = document.createElement("script");
-        s.src = "https://www.google.com/recaptcha/api.js?render=" + encodeURIComponent(key);
-        s.async = true;
-        s.defer = true;
-        document.head.appendChild(s);
-      } catch (err) {
-        console.error("Error cargando reCAPTCHA:", err);
-      }
-    })();
-  </script>
 </section>
 
+<!-- Scripts reCAPTCHA + envío -->
+<script src="https://www.google.com/recaptcha/api.js?render=VITE_RECAPTCHA_SITE_KEY"></script>
+<script>
+  const form = document.getElementById("ratingForm");
+  const tokenInput = document.getElementById("recaptchaToken");
+  const starsContainer = document.getElementById("ratingStars");
+  let selectedRating = 0;
+
+  // Selección de estrellas
+  starsContainer.querySelectorAll(".star").forEach((star, index) => {
+    star.addEventListener("click", () => {
+      selectedRating = index + 1;
+      starsContainer.querySelectorAll(".star").forEach((s, i) => {
+        s.classList.toggle("selected", i < selectedRating);
+      });
+    });
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    // Obtener token reCAPTCHA
+    const token = await grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: "submit" });
+    tokenInput.value = token;
+
+    // Recoger datos del formulario
+    const formData = new FormData(form);
+    const data = {
+      uid: "USER123", // Cambiar por UID real si lo tienes
+      place: "Tienda1", // Cambiar por identificador de lugar real
+      nombre: formData.get("name"),
+      comentario: formData.get("comment"),
+      rating: selectedRating,
+      photoURL: null, // Manejar subida a Cloudinary por separado si es necesario
+      recaptchaToken: tokenInput.value
+    };
+
+    try {
+      const res = await fetch("/.netlify/functions/save-valoracion", {
+        method: "POST",
+        body: JSON.stringify(data)
+      });
+
+      const result = await res.json();
+      if (result.success) {
+        alert("✅ Valoración enviada correctamente");
+        form.reset();
+        starsContainer.querySelectorAll(".star").forEach(s => s.classList.remove("selected"));
+        selectedRating = 0;
+      } else {
+        alert("❌ Error: " + result.error);
+      }
+    } catch (err) {
+      console.error(err);
+      alert("❌ Error enviando la valoración");
+    }
+  });
+</script>
       
  <!-- Sección de contacto -->
     <section id="contacto" class="work-section section-5">
@@ -356,3 +394,4 @@
 
 </body>
 </html>
+
