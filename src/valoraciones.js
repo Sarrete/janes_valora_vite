@@ -98,6 +98,14 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
+// 🔒 Cargar reCAPTCHA v3 dinámicamente
+(function loadRecaptchaV3() {
+  const script = document.createElement("script");
+  script.src = `https://www.google.com/recaptcha/api.js?render=${import.meta.env.VITE_RECAPTCHA_SITE_KEY}`;
+  script.async = true;
+  document.head.appendChild(script);
+})();
+
 // ENVÍO FORMULARIO
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -146,37 +154,9 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-    // --- RECAPTCHA v3: generar token AL ENVIAR, solo si no existe el script ---
-    await new Promise((resolve, reject) => {
-      if (window.grecaptcha && window.recaptchaSiteKey) {
-        grecaptcha.ready(() => {
-          grecaptcha.execute(window.recaptchaSiteKey, { action: "submit" })
-            .then((token) => {
-              window.recaptchaToken = token;
-              resolve();
-            }).catch(reject);
-        });
-      } else {
-        const script = document.createElement("script");
-        script.src = "https://www.google.com/recaptcha/api.js?render=explicit";
-        script.async = true;
-        document.head.appendChild(script);
+    // --- RECAPTCHA v3: generar token AL ENVIAR ---
+    const recaptchaToken = await grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'submit' });
 
-        script.onload = () => {
-          window.recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-          grecaptcha.ready(() => {
-            grecaptcha.execute(window.recaptchaSiteKey, { action: "submit" })
-              .then((token) => {
-                window.recaptchaToken = token;
-                resolve();
-              }).catch(reject);
-          });
-        };
-        script.onerror = () => reject(new Error("No se pudo cargar reCAPTCHA"));
-      }
-    });
-
-    // Guardar valoración
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -187,7 +167,7 @@ form.addEventListener("submit", async (e) => {
         comentario: comment || "Sin comentario",
         rating: currentRating,
         photoURL: photoURL || null,
-        recaptchaToken: window.recaptchaToken
+        recaptchaToken: recaptchaToken
       })
     });
 
@@ -206,6 +186,7 @@ form.addEventListener("submit", async (e) => {
     form.reset();
     currentRating = 0;
     updateStars(0);
+
   } catch (err) {
     alert(err.message || "Error al enviar la valoración");
   } finally {
