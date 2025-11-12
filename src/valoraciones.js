@@ -105,17 +105,24 @@ const toBase64 = (file) =>
   script.async = true;
   document.head.appendChild(script);
 
-  script.onload = () => {
-    console.log("✅ reCAPTCHA cargado de forma segura");
-  };
+  script.onload = () => console.log("✅ reCAPTCHA cargado de forma segura");
 })();
+
+// Mostrar popup informativo
+function mostrarPopup(mensaje) {
+  const popup = document.createElement("div");
+  popup.className = "popup";
+  popup.textContent = mensaje;
+  document.body.appendChild(popup);
+  setTimeout(() => popup.remove(), 3000);
+}
 
 // ENVÍO FORMULARIO
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (isSubmitting) return;
   if (!currentUser) {
-    alert("Usuario no autenticado todavía, espera un momento.");
+    mostrarPopup("⚠ Espera, usuario no autenticado aún.");
     return;
   }
 
@@ -158,7 +165,7 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-    // --- RECAPTCHA v3: generar token al enviar ---
+    // --- Generar token reCAPTCHA ---
     if (!window.grecaptcha) throw new Error("reCAPTCHA no está listo");
 
     const token = await new Promise((resolve, reject) => {
@@ -171,7 +178,7 @@ form.addEventListener("submit", async (e) => {
 
     console.log("✅ Token reCAPTCHA generado:", token);
 
-    // Enviar a backend (puede fallar, lo dejamos para pruebas)
+    // Enviar valoración con token
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -187,7 +194,14 @@ form.addEventListener("submit", async (e) => {
     });
 
     const dataValoracion = await resValoracion.json().catch(() => ({}));
-    if (!resValoracion.ok) console.warn("⚠ save-valoracion falló", dataValoracion);
+
+    if (!resValoracion.ok) {
+      console.warn("⚠ save-valoracion falló", dataValoracion);
+      mostrarPopup(`⚠ Error: ${dataValoracion.error || "No se pudo enviar la valoración"}`);
+      return;
+    }
+
+    mostrarPopup("✅ Valoración enviada correctamente. Se revisará antes de publicarse.");
 
     // Enviar correo (puede fallar)
     fetch("/.netlify/functions/send-email", {
@@ -196,14 +210,13 @@ form.addEventListener("submit", async (e) => {
       body: JSON.stringify({ nombre: name, comentario: comment, rating: currentRating })
     }).catch((err) => console.error("Error enviando email:", err));
 
-    alert("Valoración enviada. Se revisará antes de publicarse.");
     form.reset();
     currentRating = 0;
     updateStars(0);
 
   } catch (err) {
-    alert(err.message || "Error al enviar la valoración");
-    console.error(err);
+    console.error("❌ Error general:", err);
+    mostrarPopup(err.message || "Error al enviar la valoración.");
   } finally {
     isSubmitting = false;
     submitBtn.disabled = false;
