@@ -98,15 +98,14 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
-// 🔒 Cargar ReCaptcha v3 dinámicamente sin exponer la clave
+// 🔒 Cargar ReCaptcha v3 dinámicamente usando variable de entorno
 (function loadRecaptcha() {
   const script = document.createElement("script");
-  script.src = "https://www.google.com/recaptcha/api.js?render=explicit";
+  script.src = `https://www.google.com/recaptcha/api.js?render=${import.meta.env.VITE_RECAPTCHA_SITE_KEY}`;
   script.async = true;
   document.head.appendChild(script);
 
   script.onload = () => {
-    window.recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
     console.log("✅ reCAPTCHA cargado de forma segura");
   };
 })();
@@ -160,19 +159,16 @@ form.addEventListener("submit", async (e) => {
     }
 
     // --- RECAPTCHA v3: generar token al enviar ---
-    if (!window.grecaptcha || !window.recaptchaSiteKey) {
-      throw new Error("reCAPTCHA no está listo");
-    }
+    if (!window.grecaptcha) throw new Error("reCAPTCHA no está listo");
 
     const token = await new Promise((resolve, reject) => {
       grecaptcha.ready(() => {
-        grecaptcha.execute(window.recaptchaSiteKey, { action: "submit" })
-          .then((token) => resolve(token))
-          .catch((err) => reject(err));
+        grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: "submit" })
+          .then(resolve)
+          .catch(reject);
       });
     });
 
-    window.recaptchaToken = token;
     console.log("✅ Token reCAPTCHA generado:", token);
 
     // Enviar a backend (puede fallar, lo dejamos para pruebas)
@@ -186,7 +182,7 @@ form.addEventListener("submit", async (e) => {
         comentario: comment || "Sin comentario",
         rating: currentRating,
         photoURL: photoURL || null,
-        recaptchaToken: window.recaptchaToken
+        recaptchaToken: token
       })
     });
 
