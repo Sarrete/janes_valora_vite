@@ -60,32 +60,84 @@ export async function handler(event) {
     }
 
     // 🔒 Validar origen (CORS controlado)
-  const origin = event.headers.origin || "";
-  const allowedOrigins = [
-    process.env.ALLOWED_ORIGIN || "https://janesenginyeria.netlify.app",
-    "https://clever-malabi-a1eea4.netlify.app", // dominio de pruebas
-  ];
+    const origin = event.headers.origin || "";
+    const allowedOrigins = [
+      process.env.ALLOWED_ORIGIN || "https://janesenginyeria.netlify.app",
+      "https://clever-malabi-a1eea4.netlify.app", // dominio de pruebas
+    ];
 
-  const headers = {
-    ...securityHeaders,
-    "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
-  };
+    const headers = {
+      ...securityHeaders,
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    };
 
-  if (allowedOrigins.includes(origin)) {
-    headers["Access-Control-Allow-Origin"] = origin;
-  }
+    if (allowedOrigins.includes(origin)) {
+      headers["Access-Control-Allow-Origin"] = origin;
+    }
 
-  if (event.httpMethod === "OPTIONS") {
-    return { statusCode: 200, headers, body: "" };
-  }
+    if (event.httpMethod === "OPTIONS") {
+      return { statusCode: 200, headers, body: "" };
+    }
 
-  const { uid, place, rating, comentario, nombre, photoURL } = JSON.parse(event.body || "{}");
+    // Parse body
+    let payload = {};
+    try {
+      payload = JSON.parse(event.body || "{}");
+    } catch (err) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "JSON inválido" }) };
+    }
 
-  console.log("📦 Body recibido:", { uid, place, rating, comentario, nombre, photoURL });
+    const { uid, place, rating, comentario, nombre, photoURL, recaptchaToken } = payload;
 
+    console.log("📦 Body recibido:", { uid, place, rating, comentario, nombre, photoURL });
 
-    // --- Validaciones obligatorias ---
+    // --- reCAPTCHA v3: validación SERVIDOR ---
+    if (!recaptchaToken) {
+      return { statusCode: 400, headers, body: JSON.stringify({ error: "Token reCAPTCHA faltante" }) };
+    }
+
+    const RECAPTCHA_SECRET_KEY = process.env.RECAPTCHA_SECRET_KEY;
+    if (!RECAPTCHA_SECRET_KEY) {
+      console.error("❌ RECAPTCHA_SECRET_KEY no definida en el entorno");
+      return { statusCode: 500, headers, body: JSON.stringify({ error: "Configuración de seguridad incompleta" }) };
+    }
+
+    // Verificar con Google
+    try {
+      const params = new URLSearchParams({ secret: RECAPTCHA_SECRET_KEY, response: recaptchaToken });
+      const resp = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: params.toString(),
+      });
+      const recaptchaData = await resp.json();
+
+      // Logs útiles en servidor (pero no exponer al cliente)
+      console.log("🔍 reCAPTCHA response:", {
+        success: recaptchaData.success,
+        score: recaptchaData.score,
+        action: recaptchaData.action,
+        hostname: recaptchaData.hostname,
+      });
+
+      // Comprobaciones mínimas: success true y score razonable
+      const MIN_SCORE = 0.45; // puedes ajustar entre 0.3-0.7 según tolerancia
+      if (!recaptchaData.success || (typeof recaptchaData.score === "number" && recaptchaData.score < MIN_SCORE)) {
+        return { statusCode: 403, headers, body: JSON.stringify({ error: "reCAPTCHA inválido" }) };
+      }
+
+      // (Opcional) comprobar action si lo deseas
+      if (recaptchaData.action && recaptchaData.action !== "submit") {
+        // si la acción devuelta no coincide, lo marcamos como sospechoso
+        return { statusCode: 403, headers, body: JSON.stringify({ error: "Acción reCAPTCHA inesperada" }) };
+      }
+    } catch (err) {
+      console.error("❌ Error verificando reCAPTCHA:", err);
+      return { statusCode: 500, headers, body: JSON.stringify({ error: "Error validando reCAPTCHA" }) };
+    }
+
+    // --- Validaciones obligatorias (resto del flujo) ---
     if (!uid || !place || typeof rating === "undefined" || !nombre) {
       return {
         statusCode: 400,
