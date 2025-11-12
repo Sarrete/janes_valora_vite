@@ -37,7 +37,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// INICIALIZAR APP Y SERVICIOS (una sola vez)
+// INICIALIZAR APP Y SERVICIOS
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -47,7 +47,6 @@ signInAnonymously(auth).catch((error) =>
   console.error("Error en autenticación anónima:", error)
 );
 
-// Asegurar que el usuario esté listo antes de enviar
 let currentUser = null;
 onAuthStateChanged(auth, (user) => {
   if (user) {
@@ -99,6 +98,13 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
+// 🔒 Cargar ReCaptcha v3 dinámicamente
+const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const recaptchaScript = document.createElement("script");
+recaptchaScript.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
+recaptchaScript.async = true;
+document.head.appendChild(recaptchaScript);
+
 // ENVÍO FORMULARIO
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
@@ -147,6 +153,16 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
+    // --- RECAPTCHA v3: generar token ---
+    await new Promise((resolve) => {
+      grecaptcha.ready(() => {
+        grecaptcha.execute(siteKey, { action: "submit" }).then((token) => {
+          window.recaptchaToken = token;
+          resolve();
+        });
+      });
+    });
+
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -156,7 +172,8 @@ form.addEventListener("submit", async (e) => {
         nombre: name,
         comentario: comment || "Sin comentario",
         rating: currentRating,
-        photoURL: photoURL || null
+        photoURL: photoURL || null,
+        recaptchaToken: window.recaptchaToken // ✅ Enviamos el token
       })
     });
 
@@ -238,7 +255,7 @@ function renderReviews() {
     p.textContent = r.expanded ? comentarioSeguro : textoCorto;
     div.appendChild(p);
 
-       if (comentarioSeguro.length > 120) {
+    if (comentarioSeguro.length > 120) {
       const btnVerMas = document.createElement("button");
       btnVerMas.classList.add("ver-mas");
       btnVerMas.type = "button";
