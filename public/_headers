@@ -1,0 +1,47 @@
+/sitemap.xml
+  Content-Type: application/xml
+
+/site.webmanifest
+  Content-Type: application/manifest+json; charset=utf-8
+
+/locales/*.json
+  Content-Type: application/json; charset=utf-8
+
+/images/*.svg
+  Content-Type: image/svg+xml; charset=utf-8
+
+# HTML y Vite JS/HTML dinámico: no se debe cachear, siempre verificar cambios
+/*
+  Cache-Control: no-cache
+  Content-Security-Policy: default-src 'self';
+    connect-src 'self' https://firestore.googleapis.com https://www.googleapis.com https://www.gstatic.com https://api.cloudinary.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://content-firebaseappcheck.googleapis.com https://www.google.com/recaptcha/;
+    img-src 'self' data: https://res.cloudinary.com https://firebasestorage.googleapis.com;
+    script-src 'self' 'unsafe-inline' https://www.google.com/recaptcha/ https://www.gstatic.com;
+    style-src 'self' 'unsafe-inline';
+    object-src 'none';
+    frame-src https://www.google.com/recaptcha/;
+    frame-ancestors 'self';
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: geolocation=(), microphone=(), camera=()
+  Strict-Transport-Security: max-age=31536000; includeSubDomains; preload
+  X-Content-Type-Options: nosniff
+
+# Imágenes - cache largo
+/images/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+
+# Multimedia - cache largo
+/multimedia/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+
+# CSS - cache largo
+/css/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
+
+# JS - cache largo
+/js/*
+  Cache-Control: public, max-age=31536000, immutable
+  X-Content-Type-Options: nosniff
