@@ -1,22 +1,26 @@
+// functions/save-valoracion.js
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
 import fetch from "node-fetch";
 
-// --- Sanitización ---
+// --- Sanitización y validación ---
 const INVISIBLES = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F]/g;
-const DANGEROUS = /<\s*\/?\s*(script|img|svg|iframe|object|embed|link|style)\b|on\w+\s*=|javascript:|data:/i;
-const palabrasProhibidas = ["spam", "xxx"];
+const DANGEROUS =
+  /<\s*\/?\s*(script|img|svg|iframe|object|embed|link|style)\b|on\w+\s*=|javascript:|data:/i;
 
 function sanitizeText(input) {
   if (!input) return "";
-  return String(input).replace(INVISIBLES, "").replace(/[\r\n]+/g, " ").trim();
+  return String(input)
+    .replace(INVISIBLES, "")
+    .replace(/[\r\n]+/g, " ")
+    .trim();
 }
 
 function isSafeText(input) {
   return !DANGEROUS.test(input);
 }
 
-// --- Firebase Admin ---
+// --- Inicialización Firebase Admin ---
 let db;
 if (!getApps().length) {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -24,35 +28,45 @@ if (!getApps().length) {
     initializeApp({ credential: cert(serviceAccount) });
     db = getFirestore();
   } else {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT no definido");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT no está definido");
   }
 } else {
   db = getFirestore();
 }
 
-// --- Handler ---
 export async function handler(event) {
   try {
-    if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
+    if (event.httpMethod !== "POST") {
+      return { statusCode: 405, body: "Method Not Allowed" };
+    }
 
-    const { uid, place, rating, comentario, nombre, photoURL, recaptchaToken } = JSON.parse(event.body || "{}");
+    const { uid, place, rating, comentario, nombre, photoURL, recaptchaToken } =
+      JSON.parse(event.body || "{}");
 
-    // Validar token reCAPTCHA
-    if (!recaptchaToken) return { statusCode: 400, body: JSON.stringify({ error: "Token reCAPTCHA faltante" }) };
-    const secret = process.env.RECAPTCHA_SECRET_KEY;
-    if (!secret) return { statusCode: 500, body: JSON.stringify({ error: "RECAPTCHA_SECRET_KEY no definido" }) };
+    // --- Validar token reCAPTCHA ---
+    if (!recaptchaToken) {
+      return { statusCode: 400, body: JSON.stringify({ error: "Token reCAPTCHA faltante" }) };
+    }
 
-    const verifyRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(recaptchaToken)}`
-    });
+    const secret = process.env.RECAPTCHA_SECRET_KEY; // ✅ solo backend
+    if (!secret) {
+      return { statusCode: 500, body: JSON.stringify({ error: "RECAPTCHA_SECRET_KEY no definido" }) };
+    }
+
+    const verifyRes = await fetch(
+      `https://www.google.com/recaptcha/api/siteverify`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(recaptchaToken)}`
+      }
+    );
     const verifyData = await verifyRes.json();
     if (!verifyData.success || (verifyData.score !== undefined && verifyData.score < 0.5)) {
       return { statusCode: 403, body: JSON.stringify({ error: "reCAPTCHA inválido" }) };
     }
 
-    // Validaciones básicas
+    // --- Validaciones ---
     if (!uid || !place || typeof rating === "undefined" || !nombre) {
       return { statusCode: 400, body: JSON.stringify({ error: "Faltan campos obligatorios" }) };
     }
@@ -77,32 +91,35 @@ export async function handler(event) {
       return { statusCode: 400, body: JSON.stringify({ error: "Nombre contiene caracteres no permitidos" }) };
     }
 
-    if (palabrasProhibidas.some((p) => safeComentario.toLowerCase().includes(p))) {
+    const palabrasProhibidas = ["spam", "xxx"];
+    if (palabrasProhibidas.some(p => safeComentario.toLowerCase().includes(p))) {
       return { statusCode: 400, body: JSON.stringify({ error: "Comentario contiene contenido prohibido" }) };
     }
 
-    // Validar photoURL
+    // --- Validación de photoURL ---
     let safePhotoURL = null;
-    if (photoURL && typeof photoURL === "string") {
-      const url = new URL(photoURL);
-      if (url.protocol !== "https:" || url.hostname !== "res.cloudinary.com") {
-        return { statusCode: 400, body: JSON.stringify({ error: "Imagen no permitida" }) };
+    if (photoURL) {
+      try {
+        const url = new URL(photoURL);
+        if (url.protocol !== "https:" || url.hostname !== "res.cloudinary.com") {
+          return { statusCode: 400, body: JSON.stringify({ error: "Imagen no permitida" }) };
+        }
+        safePhotoURL = photoURL;
+      } catch (err) {
+        return { statusCode: 400, body: JSON.stringify({ error: "URL de imagen inválida" }) };
       }
-      safePhotoURL = photoURL;
     }
 
-    // Rate limiting: 1 valoración por minuto
+    // --- Rate limiting: 1 valoración por minuto ---
     const haceUnMinuto = Timestamp.fromMillis(Date.now() - 60 * 1000);
-    const snapshot = await db
-      .collection("valoraciones")
+    const snapshot = await db.collection("valoraciones")
       .where("uid", "==", uid)
       .where("place", "==", place)
       .where("timestamp", ">", haceUnMinuto)
       .get();
-
     if (!snapshot.empty) return { statusCode: 429, body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" }) };
 
-    // Guardar en Firestore
+    // --- Guardar en Firestore ---
     const docRef = await db.collection("valoraciones").add({
       uid,
       place,
