@@ -240,9 +240,6 @@
       name="photo" 
       accept="image/png, image/jpeg, image/webp">
 
-    <!-- reCAPTCHA invisible -->
-    <input type="hidden" id="recaptchaToken" name="recaptchaToken">
-
     <!-- Botón -->
     <button type="submit" data-i18n="reviews.submit" aria-label="Enviar valoración"></button>
   </form>
@@ -260,66 +257,9 @@
       Ver todas las valoraciones
     </button>
   </div>
+  
+  
 </section>
-
-<!-- Scripts reCAPTCHA + envío -->
-<script src="https://www.google.com/recaptcha/api.js?render=VITE_RECAPTCHA_SITE_KEY"></script>
-<script>
-  const form = document.getElementById("ratingForm");
-  const tokenInput = document.getElementById("recaptchaToken");
-  const starsContainer = document.getElementById("ratingStars");
-  let selectedRating = 0;
-
-  // Selección de estrellas
-  starsContainer.querySelectorAll(".star").forEach((star, index) => {
-    star.addEventListener("click", () => {
-      selectedRating = index + 1;
-      starsContainer.querySelectorAll(".star").forEach((s, i) => {
-        s.classList.toggle("selected", i < selectedRating);
-      });
-    });
-  });
-
-  form.addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    // Obtener token reCAPTCHA
-    const token = await grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: "submit" });
-    tokenInput.value = token;
-
-    // Recoger datos del formulario
-    const formData = new FormData(form);
-    const data = {
-      uid: "USER123", // Cambiar por UID real si lo tienes
-      place: "Tienda1", // Cambiar por identificador de lugar real
-      nombre: formData.get("name"),
-      comentario: formData.get("comment"),
-      rating: selectedRating,
-      photoURL: null, // Manejar subida a Cloudinary por separado si es necesario
-      recaptchaToken: tokenInput.value
-    };
-
-    try {
-      const res = await fetch("/.netlify/functions/save-valoracion", {
-        method: "POST",
-        body: JSON.stringify(data)
-      });
-
-      const result = await res.json();
-      if (result.success) {
-        alert("✅ Valoración enviada correctamente");
-        form.reset();
-        starsContainer.querySelectorAll(".star").forEach(s => s.classList.remove("selected"));
-        selectedRating = 0;
-      } else {
-        alert("❌ Error: " + result.error);
-      }
-    } catch (err) {
-      console.error(err);
-      alert("❌ Error enviando la valoración");
-    }
-  });
-</script>
       
  <!-- Sección de contacto -->
     <section id="contacto" class="work-section section-5">
@@ -394,4 +334,3 @@
 
 </body>
 </html>
-
