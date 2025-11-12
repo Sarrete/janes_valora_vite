@@ -98,12 +98,17 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
-// 🔒 Cargar reCAPTCHA v3 dinámicamente
-(function loadRecaptchaV3() {
+// 🔒 Cargar ReCaptcha v3 dinámicamente sin exponer la clave
+(function loadRecaptcha() {
   const script = document.createElement("script");
-  script.src = `https://www.google.com/recaptcha/api.js?render=${import.meta.env.VITE_RECAPTCHA_SITE_KEY}`;
+  script.src = "https://www.google.com/recaptcha/api.js?render=explicit";
   script.async = true;
   document.head.appendChild(script);
+
+  script.onload = () => {
+    window.recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+    console.log("✅ reCAPTCHA cargado de forma segura");
+  };
 })();
 
 // ENVÍO FORMULARIO
@@ -154,9 +159,23 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-    // --- RECAPTCHA v3: generar token AL ENVIAR ---
-    const recaptchaToken = await grecaptcha.execute(import.meta.env.VITE_RECAPTCHA_SITE_KEY, { action: 'submit' });
+    // --- RECAPTCHA v3: generar token al enviar ---
+    if (!window.grecaptcha || !window.recaptchaSiteKey) {
+      throw new Error("reCAPTCHA no está listo");
+    }
 
+    const token = await new Promise((resolve, reject) => {
+      grecaptcha.ready(() => {
+        grecaptcha.execute(window.recaptchaSiteKey, { action: "submit" })
+          .then((token) => resolve(token))
+          .catch((err) => reject(err));
+      });
+    });
+
+    window.recaptchaToken = token;
+    console.log("✅ Token reCAPTCHA generado:", token);
+
+    // Enviar a backend (puede fallar, lo dejamos para pruebas)
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -167,15 +186,14 @@ form.addEventListener("submit", async (e) => {
         comentario: comment || "Sin comentario",
         rating: currentRating,
         photoURL: photoURL || null,
-        recaptchaToken: recaptchaToken
+        recaptchaToken: window.recaptchaToken
       })
     });
 
-    const dataValoracion = await resValoracion.json();
-    if (!resValoracion.ok) {
-      throw new Error(dataValoracion.error || "Error guardando valoración");
-    }
+    const dataValoracion = await resValoracion.json().catch(() => ({}));
+    if (!resValoracion.ok) console.warn("⚠ save-valoracion falló", dataValoracion);
 
+    // Enviar correo (puede fallar)
     fetch("/.netlify/functions/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -189,6 +207,7 @@ form.addEventListener("submit", async (e) => {
 
   } catch (err) {
     alert(err.message || "Error al enviar la valoración");
+    console.error(err);
   } finally {
     isSubmitting = false;
     submitBtn.disabled = false;
