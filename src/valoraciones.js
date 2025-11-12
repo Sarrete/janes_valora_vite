@@ -98,12 +98,18 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
-// 🔒 Cargar ReCaptcha v3 dinámicamente
-const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-const recaptchaScript = document.createElement("script");
-recaptchaScript.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
-recaptchaScript.async = true;
-document.head.appendChild(recaptchaScript);
+// 🔒 Cargar ReCaptcha v3 dinámicamente sin exponer la clave
+(function loadRecaptcha() {
+  const script = document.createElement("script");
+  script.src = "https://www.google.com/recaptcha/api.js?render=explicit";
+  script.async = true;
+  document.head.appendChild(script);
+
+  script.onload = () => {
+    window.recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+    console.log("✅ reCAPTCHA cargado de forma segura");
+  };
+})();
 
 // ENVÍO FORMULARIO
 form.addEventListener("submit", async (e) => {
@@ -153,10 +159,14 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-    // --- RECAPTCHA v3: generar token ---
-    await new Promise((resolve) => {
+    // --- RECAPTCHA v3: generar token al enviar formulario ---
+    await new Promise((resolve, reject) => {
+      if (!window.grecaptcha || !window.recaptchaSiteKey) {
+        return reject(new Error("reCAPTCHA no está listo"));
+      }
+
       grecaptcha.ready(() => {
-        grecaptcha.execute(siteKey, { action: "submit" }).then((token) => {
+        grecaptcha.execute(window.recaptchaSiteKey, { action: "submit" }).then((token) => {
           window.recaptchaToken = token;
           resolve();
         });
@@ -173,7 +183,7 @@ form.addEventListener("submit", async (e) => {
         comentario: comment || "Sin comentario",
         rating: currentRating,
         photoURL: photoURL || null,
-        recaptchaToken: window.recaptchaToken // ✅ Enviamos el token
+        recaptchaToken: window.recaptchaToken
       })
     });
 
