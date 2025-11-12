@@ -1,4 +1,8 @@
-// IMPORTS FIREBASE (desde npm, no CDN)
+// =============================
+// 📦 valoraciones.js — versión segura final
+// =============================
+
+// --- IMPORTS FIREBASE (desde npm, no CDN)
 import { initializeApp } from "firebase/app";
 import {
   getFirestore,
@@ -11,15 +15,15 @@ import {
 } from "firebase/firestore";
 import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 
-// 🔐 Sanitización y validación de texto
+// --- 🔐 Sanitización y validación de texto
 const INVISIBLES = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F]/g;
 const DANGEROUS = /<\s*\/?\s*(script|img|svg|iframe|object|embed|link|style)\b|on\w+\s*=|javascript:|data:/i;
 
 function sanitizeText(input) {
-  if (!input) return '';
+  if (!input) return "";
   return String(input)
-    .replace(INVISIBLES, '')
-    .replace(/[\r\n]+/g, ' ')
+    .replace(INVISIBLES, "")
+    .replace(/[\r\n]+/g, " ")
     .trim();
 }
 
@@ -27,7 +31,7 @@ function isSafeText(input) {
   return !DANGEROUS.test(input);
 }
 
-// CONFIGURACIÓN FIREBASE usando variables de entorno
+// --- ⚙️ Configuración Firebase usando variables de entorno
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
@@ -37,7 +41,7 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// INICIALIZAR APP Y SERVICIOS
+// --- 🔥 Inicializar Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
@@ -55,13 +59,13 @@ onAuthStateChanged(auth, (user) => {
   }
 });
 
-// 🔑 Conectar al emulador SOLO en desarrollo
+// 🔥 Conectar al emulador SOLO en desarrollo
 if (import.meta.env.DEV) {
   connectFirestoreEmulator(db, "localhost", 8080);
   console.log("🔥 Conectado al Firestore Emulator en localhost:8080");
 }
 
-// ELEMENTOS DOM
+// --- 🧱 ELEMENTOS DOM
 const form = document.getElementById("ratingForm");
 const stars = document.querySelectorAll("#ratingStars .star");
 const reviewsContainer = document.getElementById("reviews");
@@ -70,10 +74,10 @@ const verTodasBtn = document.getElementById("verTodasBtn");
 let currentRating = 0;
 let isSubmitting = false;
 
-// MENSAJE INICIAL
+// --- Mensaje inicial
 reviewsContainer.innerHTML = '<p class="loading">Cargando valoraciones...</p>';
 
-// ESTRELLAS INTERACTIVAS
+// --- ⭐ ESTRELLAS INTERACTIVAS
 function updateStars(rating) {
   stars.forEach((star, idx) =>
     star.classList.toggle("selected", idx < rating)
@@ -89,7 +93,7 @@ stars.forEach((star, idx) => {
   });
 });
 
-// Helper para convertir archivo a base64
+// --- 🖼️ Helper para convertir archivo a Base64
 const toBase64 = (file) =>
   new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -98,20 +102,26 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
-// 🔒 Cargar ReCaptcha v3 dinámicamente sin exponer la clave
+// --- 🔒 Cargar reCAPTCHA v3 de forma segura
 (function loadRecaptcha() {
+  const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+  if (!siteKey) {
+    console.error("⚠️ Falta VITE_RECAPTCHA_SITE_KEY");
+    return;
+  }
+
   const script = document.createElement("script");
-  script.src = "https://www.google.com/recaptcha/api.js?render=explicit";
+  script.src = `https://www.google.com/recaptcha/api.js?render=${siteKey}`;
   script.async = true;
   document.head.appendChild(script);
 
   script.onload = () => {
-    window.recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
-    console.log("✅ reCAPTCHA cargado de forma segura");
+    window.recaptchaSiteKey = siteKey;
+    console.log("✅ reCAPTCHA v3 cargado correctamente");
   };
 })();
 
-// ENVÍO FORMULARIO
+// --- 📤 Envío del formulario
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (isSubmitting) return;
@@ -133,15 +143,17 @@ form.addEventListener("submit", async (e) => {
     const photoFile = document.getElementById("photo").files[0];
 
     if (!name) throw new Error("Por favor, ingresa tu nombre.");
-    if (currentRating === 0) throw new Error("Por favor, selecciona una valoración.");
+    if (currentRating === 0)
+      throw new Error("Por favor, selecciona una valoración.");
     if (!isSafeText(name) || !isSafeText(comment)) {
       throw new Error("El texto contiene contenido potencialmente peligroso.");
     }
 
-    // Validación de imagen
+    // --- Validación de imagen
     const MAX_BYTES = 5 * 1024 * 1024;
     const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
     let photoURL = null;
+
     if (photoFile) {
       if (!ALLOWED.includes(photoFile.type))
         throw new Error("Formato no permitido. Usa JPG, PNG o WEBP.");
@@ -159,20 +171,20 @@ form.addEventListener("submit", async (e) => {
       photoURL = json.secure_url;
     }
 
-    // --- RECAPTCHA v3: generar token al enviar formulario ---
-    await new Promise((resolve, reject) => {
-      if (!window.grecaptcha || !window.recaptchaSiteKey) {
+    // --- 🧠 reCAPTCHA v3: generar token dinámicamente
+    const token = await new Promise((resolve, reject) => {
+      if (!window.grecaptcha || !window.recaptchaSiteKey)
         return reject(new Error("reCAPTCHA no está listo"));
-      }
 
       grecaptcha.ready(() => {
-        grecaptcha.execute(window.recaptchaSiteKey, { action: "submit" }).then((token) => {
-          window.recaptchaToken = token;
-          resolve();
-        });
+        grecaptcha
+          .execute(window.recaptchaSiteKey, { action: "submit" })
+          .then(resolve)
+          .catch(reject);
       });
     });
 
+    // --- Guardar valoración en el backend
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -183,7 +195,7 @@ form.addEventListener("submit", async (e) => {
         comentario: comment || "Sin comentario",
         rating: currentRating,
         photoURL: photoURL || null,
-        recaptchaToken: window.recaptchaToken
+        recaptchaToken: token
       })
     });
 
@@ -192,10 +204,15 @@ form.addEventListener("submit", async (e) => {
       throw new Error(dataValoracion.error || "Error guardando valoración");
     }
 
+    // --- Email opcional al administrador
     fetch("/.netlify/functions/send-email", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ nombre: name, comentario: comment, rating: currentRating })
+      body: JSON.stringify({
+        nombre: name,
+        comentario: comment,
+        rating: currentRating
+      })
     }).catch((err) => console.error("Error enviando email:", err));
 
     alert("Valoración enviada. Se revisará antes de publicarse.");
@@ -211,7 +228,7 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// ESCUCHA EN TIEMPO REAL (solo aprobadas)
+// --- 🔄 Escucha en tiempo real de reseñas aprobadas
 const q = query(
   collection(db, "valoraciones"),
   where("aprobado", "==", true),
@@ -238,10 +255,11 @@ onSnapshot(q, (snapshot) => {
   renderReviews();
 });
 
-// Render de reseñas
+// --- 🧩 Renderizar reseñas en pantalla
 function renderReviews() {
   reviewsContainer.innerHTML = "";
   const lista = mostrandoTodas ? todasLasReseñas : todasLasReseñas.slice(0, 3);
+
   lista.forEach((r) => {
     const div = document.createElement("div");
     div.classList.add("review-card");
@@ -293,7 +311,7 @@ function renderReviews() {
   }
 }
 
-// Botón global "Ver todas"
+// --- 🎛️ Botón global "Ver todas"
 if (verTodasBtn) {
   verTodasBtn.addEventListener("click", () => {
     mostrandoTodas = !mostrandoTodas;
