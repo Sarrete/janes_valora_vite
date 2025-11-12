@@ -1,19 +1,6 @@
 // =============================
-// 📦 valoraciones.js — versión segura final
+// 📦 valoraciones.js — versión segura Netlify
 // =============================
-
-// --- IMPORTS FIREBASE (desde npm, no CDN)
-import { initializeApp } from "firebase/app";
-import {
-  getFirestore,
-  connectFirestoreEmulator,
-  collection,
-  query,
-  where,
-  orderBy,
-  onSnapshot
-} from "firebase/firestore";
-import { getAuth, signInAnonymously, onAuthStateChanged } from "firebase/auth";
 
 // --- 🔐 Sanitización y validación de texto
 const INVISIBLES = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F]/g;
@@ -29,40 +16,6 @@ function sanitizeText(input) {
 
 function isSafeText(input) {
   return !DANGEROUS.test(input);
-}
-
-// --- ⚙️ Configuración Firebase usando variables de entorno
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID
-};
-
-// --- 🔥 Inicializar Firebase
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
-const auth = getAuth(app);
-
-// Autenticación anónima inicial
-signInAnonymously(auth).catch((error) =>
-  console.error("Error en autenticación anónima:", error)
-);
-
-let currentUser = null;
-onAuthStateChanged(auth, (user) => {
-  if (user) {
-    currentUser = user;
-    console.log("✅ Usuario anónimo listo:", user.uid);
-  }
-});
-
-// 🔥 Conectar al emulador SOLO en desarrollo
-if (import.meta.env.DEV) {
-  connectFirestoreEmulator(db, "localhost", 8080);
-  console.log("🔥 Conectado al Firestore Emulator en localhost:8080");
 }
 
 // --- 🧱 ELEMENTOS DOM
@@ -102,7 +55,7 @@ const toBase64 = (file) =>
     reader.onerror = (error) => reject(error);
   });
 
-// --- 🔒 Cargar reCAPTCHA v3 de forma segura
+// --- 🔒 Cargar reCAPTCHA v3 público (solo site key)
 (function loadRecaptcha() {
   const siteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
   if (!siteKey) {
@@ -125,10 +78,6 @@ const toBase64 = (file) =>
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (isSubmitting) return;
-  if (!currentUser) {
-    alert("Usuario no autenticado todavía, espera un momento.");
-    return;
-  }
 
   isSubmitting = true;
   const submitBtn = form.querySelector('button[type="submit"]');
@@ -184,13 +133,11 @@ form.addEventListener("submit", async (e) => {
       });
     });
 
-    // --- Guardar valoración en el backend
+    // --- Guardar valoración en Netlify Function
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        uid: currentUser.uid,
-        place: "default",
         nombre: name,
         comentario: comment || "Sin comentario",
         rating: currentRating,
@@ -204,18 +151,7 @@ form.addEventListener("submit", async (e) => {
       throw new Error(dataValoracion.error || "Error guardando valoración");
     }
 
-    // --- Email opcional al administrador
-    fetch("/.netlify/functions/send-email", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        nombre: name,
-        comentario: comment,
-        rating: currentRating
-      })
-    }).catch((err) => console.error("Error enviando email:", err));
-
-    alert("Valoración enviada. Se revisará antes de publicarse.");
+    alert("✅ Valoración enviada. Se revisará antes de publicarse.");
     form.reset();
     currentRating = 0;
     updateStars(0);
@@ -228,38 +164,21 @@ form.addEventListener("submit", async (e) => {
   }
 });
 
-// --- 🔄 Escucha en tiempo real de reseñas aprobadas
-const q = query(
-  collection(db, "valoraciones"),
-  where("aprobado", "==", true),
-  orderBy("timestamp", "desc")
-);
+// --- 🔄 Renderización de reseñas (puedes conectar a Firestore o JSON)
+async function fetchReviews() {
+  // Ejemplo de fetch desde una Netlify Function / JSON
+  try {
+    const res = await fetch("/.netlify/functions/get-reviews");
+    const data = await res.json();
+    renderReviews(data);
+  } catch (err) {
+    reviewsContainer.innerHTML = "<p>No se pudieron cargar las valoraciones.</p>";
+  }
+}
 
-let todasLasReseñas = [];
-let mostrandoTodas = false;
-
-onSnapshot(q, (snapshot) => {
-  const nuevas = [];
-  snapshot.forEach((doc) => {
-    const data = doc.data();
-    if (!data?.nombre || typeof data.rating !== "number") return;
-    nuevas.push({
-      nombre: data.nombre,
-      comentario: data.comentario || "Sin comentario",
-      rating: data.rating,
-      photoURL: data.photoURL || null,
-      expanded: false
-    });
-  });
-  todasLasReseñas = nuevas;
-  renderReviews();
-});
-
-// --- 🧩 Renderizar reseñas en pantalla
-function renderReviews() {
+function renderReviews(reviews) {
   reviewsContainer.innerHTML = "";
-  const lista = mostrandoTodas ? todasLasReseñas : todasLasReseñas.slice(0, 3);
-
+  const lista = reviews.slice(0, 3); // mostrar solo 3 primero
   lista.forEach((r) => {
     const div = document.createElement("div");
     div.classList.add("review-card");
@@ -275,25 +194,12 @@ function renderReviews() {
 
     const p = document.createElement("p");
     p.classList.add("review-text");
-    const comentarioSeguro = sanitizeText(String(r.comentario));
-    const textoCorto =
+    const comentarioSeguro = sanitizeText(r.comentario || "Sin comentario");
+    p.textContent =
       comentarioSeguro.length > 120
         ? comentarioSeguro.slice(0, 120) + "..."
         : comentarioSeguro;
-    p.textContent = r.expanded ? comentarioSeguro : textoCorto;
     div.appendChild(p);
-
-    if (comentarioSeguro.length > 120) {
-      const btnVerMas = document.createElement("button");
-      btnVerMas.classList.add("ver-mas");
-      btnVerMas.type = "button";
-      btnVerMas.innerText = r.expanded ? "Ver menos" : "Ver más";
-      btnVerMas.addEventListener("click", () => {
-        r.expanded = !r.expanded;
-        renderReviews();
-      });
-      div.appendChild(btnVerMas);
-    }
 
     if (r.photoURL) {
       const img = document.createElement("img");
@@ -305,16 +211,7 @@ function renderReviews() {
 
     reviewsContainer.appendChild(div);
   });
-
-  if (verTodasBtn) {
-    verTodasBtn.textContent = mostrandoTodas ? "Ver menos" : "Ver todas";
-  }
 }
 
-// --- 🎛️ Botón global "Ver todas"
-if (verTodasBtn) {
-  verTodasBtn.addEventListener("click", () => {
-    mostrandoTodas = !mostrandoTodas;
-    renderReviews();
-  });
-}
+// Cargar reseñas al inicio
+fetchReviews();
