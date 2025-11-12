@@ -3,8 +3,11 @@
   functions = "functions"
 
 [build.environment]
+  # Ignorar claves que pueden aparecer en frontend sin riesgo
+  SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET,VITE_FIREBASE_APP_ID,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_RECAPTCHA_SITE_KEY"
+  
+  # Ignorar archivos que no contienen secretos sensibles
   SECRETS_SCAN_OMIT_PATHS = "valoraciones.js"
-  SECRETS_SCAN_OMIT_KEYS = "VITE_RECAPTCHA_SITE_KEY"
 
 # --- Redirecciones ---
 [[redirects]]
@@ -19,7 +22,7 @@
   status = 301
   force = true
 
-# 🔑 Redirección SPA para React Router
+# SPA React Router
 [[redirects]]
   from = "/*"
   to = "/index.html"
