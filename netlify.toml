@@ -3,10 +3,7 @@
   functions = "functions"
 
 [build.environment]
-  # Ignorar claves que pueden aparecer en frontend sin riesgo
   SECRETS_SCAN_OMIT_KEYS = "VITE_FIREBASE_API_KEY,VITE_FIREBASE_AUTH_DOMAIN,VITE_FIREBASE_PROJECT_ID,VITE_FIREBASE_STORAGE_BUCKET,VITE_FIREBASE_APP_ID,VITE_FIREBASE_MESSAGING_SENDER_ID,VITE_RECAPTCHA_SITE_KEY"
-  
-  # Ignorar archivos que no contienen secretos sensibles
   SECRETS_SCAN_OMIT_PATHS = "valoraciones.js"
 
 # --- Redirecciones ---
@@ -32,7 +29,7 @@
 [[headers]]
   for = "/*"
   [headers.values]
-    Cache-Control = "public, max-age=300, must-revalidate"
+    Cache-Control = "no-cache, no-store, must-revalidate"
     Vary = "Accept-Encoding"
     X-Content-Type-Options = "nosniff"
     Strict-Transport-Security = "max-age=31536000; includeSubDomains; preload"
@@ -44,7 +41,7 @@
       default-src 'self';
       img-src 'self' data: blob: https://res.cloudinary.com https://firebasestorage.googleapis.com https://*.netlify.app;
       media-src 'self' https://res.cloudinary.com;
-      script-src 'self' https://www.gstatic.com https://cdn.jsdelivr.net https://apis.google.com https://www.google.com;
+      script-src 'self' 'unsafe-inline' https://www.gstatic.com https://cdn.jsdelivr.net https://apis.google.com https://www.google.com;
       connect-src 'self' http://localhost:* http://127.0.0.1:* https://*.netlify.app https://firestore.googleapis.com https://www.googleapis.com https://www.gstatic.com https://api.cloudinary.com https://cdn.jsdelivr.net https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://firebaseinstallations.googleapis.com https://content-firebaseappcheck.googleapis.com https://firebasestorage.googleapis.com;
       style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
       font-src 'self' https://fonts.gstatic.com;
@@ -57,19 +54,44 @@
     """
     X-Robots-Tag = "noindex, nofollow"
 
-# --- Cabeceras para recursos versionados ---
+# --- Cacheo largo para recursos estáticos (no cambian) ---
+
 [[headers]]
   for = "/assets/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
     Vary = "Accept-Encoding"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/images/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Vary = "Accept-Encoding"
+    X-Content-Type-Options = "nosniff"
 
 [[headers]]
   for = "/multimedia/*"
   [headers.values]
     Cache-Control = "public, max-age=31536000, immutable"
     Vary = "Accept-Encoding"
+    X-Content-Type-Options = "nosniff"
 
+[[headers]]
+  for = "/css/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Vary = "Accept-Encoding"
+    X-Content-Type-Options = "nosniff"
+
+[[headers]]
+  for = "/js/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+    Vary = "Accept-Encoding"
+    X-Content-Type-Options = "nosniff"
+
+# --- Tipos de contenido específicos ---
 [[headers]]
   for = "/*.css"
   [headers.values]
@@ -80,3 +102,13 @@
   [headers.values]
     Content-Type = "application/xml"
     Vary = "Accept-Encoding"
+
+[[headers]]
+  for = "/site.webmanifest"
+  [headers.values]
+    Content-Type = "application/manifest+json; charset=utf-8"
+
+[[headers]]
+  for = "/locales/*.json"
+  [headers.values]
+    Content-Type = "application/json; charset=utf-8"
