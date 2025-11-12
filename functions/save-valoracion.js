@@ -1,26 +1,22 @@
-// functions/save-valoracion.js
 import { initializeApp, cert, getApps } from "firebase-admin/app";
 import { getFirestore, FieldValue, Timestamp } from "firebase-admin/firestore";
-import fetch from "node-fetch"; // para Netlify Functions
+import fetch from "node-fetch";
 
-// --- Sanitización y validación ---
+// --- Sanitización ---
 const INVISIBLES = /[\u200B-\u200F\u202A-\u202E\u2060-\u206F]/g;
-const DANGEROUS =
-  /<\s*\/?\s*(script|img|svg|iframe|object|embed|link|style)\b|on\w+\s*=|javascript:|data:/i;
+const DANGEROUS = /<\s*\/?\s*(script|img|svg|iframe|object|embed|link|style)\b|on\w+\s*=|javascript:|data:/i;
+const palabrasProhibidas = ["spam", "xxx"];
 
 function sanitizeText(input) {
   if (!input) return "";
-  return String(input)
-    .replace(INVISIBLES, "")
-    .replace(/[\r\n]+/g, " ")
-    .trim();
+  return String(input).replace(INVISIBLES, "").replace(/[\r\n]+/g, " ").trim();
 }
 
 function isSafeText(input) {
   return !DANGEROUS.test(input);
 }
 
-// --- Inicialización Firebase Admin ---
+// --- Firebase Admin ---
 let db;
 if (!getApps().length) {
   if (process.env.FIREBASE_SERVICE_ACCOUNT) {
@@ -28,57 +24,44 @@ if (!getApps().length) {
     initializeApp({ credential: cert(serviceAccount) });
     db = getFirestore();
   } else {
-    throw new Error("FIREBASE_SERVICE_ACCOUNT no está definido");
+    throw new Error("FIREBASE_SERVICE_ACCOUNT no definido");
   }
 } else {
   db = getFirestore();
 }
 
+// --- Handler ---
 export async function handler(event) {
   try {
-    if (event.httpMethod !== "POST") {
-      return { statusCode: 405, body: "Method Not Allowed" };
-    }
+    if (event.httpMethod !== "POST") return { statusCode: 405, body: "Method Not Allowed" };
 
-    const { uid, place, rating, comentario, nombre, photoURL, recaptchaToken } =
-      JSON.parse(event.body || "{}");
+    const { uid, place, rating, comentario, nombre, photoURL, recaptchaToken } = JSON.parse(event.body || "{}");
 
-    // --- Validar token reCAPTCHA ---
-    if (!recaptchaToken) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Token reCAPTCHA faltante" }) };
-    }
+    // Validar token reCAPTCHA
+    if (!recaptchaToken) return { statusCode: 400, body: JSON.stringify({ error: "Token reCAPTCHA faltante" }) };
     const secret = process.env.RECAPTCHA_SECRET_KEY;
-    if (!secret) {
-      return { statusCode: 500, body: JSON.stringify({ error: "RECAPTCHA_SECRET_KEY no definido" }) };
-    }
+    if (!secret) return { statusCode: 500, body: JSON.stringify({ error: "RECAPTCHA_SECRET_KEY no definido" }) };
 
-    const verifyRes = await fetch(
-      `https://www.google.com/recaptcha/api/siteverify`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/x-www-form-urlencoded" },
-        body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(recaptchaToken)}`
-      }
-    );
+    const verifyRes = await fetch("https://www.google.com/recaptcha/api/siteverify", {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: `secret=${encodeURIComponent(secret)}&response=${encodeURIComponent(recaptchaToken)}`
+    });
     const verifyData = await verifyRes.json();
     if (!verifyData.success || (verifyData.score !== undefined && verifyData.score < 0.5)) {
       return { statusCode: 403, body: JSON.stringify({ error: "reCAPTCHA inválido" }) };
     }
 
-    console.log("📦 Body recibido:", { uid, place, rating, comentario, nombre, photoURL });
-
-    // --- Validaciones obligatorias ---
+    // Validaciones básicas
     if (!uid || !place || typeof rating === "undefined" || !nombre) {
       return { statusCode: 400, body: JSON.stringify({ error: "Faltan campos obligatorios" }) };
     }
 
-    // --- Validación de rating ---
     const ratingNum = Number(rating);
     if (!Number.isInteger(ratingNum) || ratingNum < 1 || ratingNum > 5) {
       return { statusCode: 400, body: JSON.stringify({ error: "Rating inválido" }) };
     }
 
-    // --- Sanitización de nombre y comentario ---
     const safeNombre = sanitizeText(nombre);
     const safeComentario = sanitizeText(comentario || "Sin comentario");
 
@@ -86,56 +69,29 @@ export async function handler(event) {
       return { statusCode: 400, body: JSON.stringify({ error: "Texto contiene contenido peligroso" }) };
     }
 
-    // --- Longitud máxima ---
-    if (safeNombre.length > 50) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Nombre demasiado largo" }) };
-    }
-    if (safeComentario.length > 1000) {
-      return { statusCode: 400, body: JSON.stringify({ error: "Comentario demasiado largo" }) };
-    }
+    if (safeNombre.length > 50) return { statusCode: 400, body: JSON.stringify({ error: "Nombre demasiado largo" }) };
+    if (safeComentario.length > 1000) return { statusCode: 400, body: JSON.stringify({ error: "Comentario demasiado largo" }) };
 
-    // --- Regex de caracteres permitidos en nombre ---
     const nombreRegex = /^[a-zA-ZÀ-ÿ0-9\s.,'-]+$/u;
     if (!nombreRegex.test(safeNombre)) {
       return { statusCode: 400, body: JSON.stringify({ error: "Nombre contiene caracteres no permitidos" }) };
     }
 
-    // --- Lista negra de palabras en comentario ---
-    const palabrasProhibidas = ["spam", "xxx"];
-    const lowerComentario = safeComentario.toLowerCase();
-    if (palabrasProhibidas.some((p) => lowerComentario.includes(p))) {
+    if (palabrasProhibidas.some((p) => safeComentario.toLowerCase().includes(p))) {
       return { statusCode: 400, body: JSON.stringify({ error: "Comentario contiene contenido prohibido" }) };
     }
 
-    // --- Validación de photoURL ---
+    // Validar photoURL
     let safePhotoURL = null;
     if (photoURL && typeof photoURL === "string") {
-      try {
-        const url = new URL(photoURL);
-        if (url.protocol !== "https:") {
-          return { statusCode: 400, body: JSON.stringify({ error: "La URL debe ser HTTPS" }) };
-        }
-        if (url.hostname !== "res.cloudinary.com") {
-          return { statusCode: 400, body: JSON.stringify({ error: "Solo se permiten imágenes de Cloudinary" }) };
-        }
-
-        const cloudName = process.env.CLOUDINARY_CLOUD_NAME;
-        if (!cloudName) {
-          return { statusCode: 500, body: JSON.stringify({ error: "Configuración de Cloudinary incompleta" }) };
-        }
-
-        const escapedCloud = cloudName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-        const regex = new RegExp(`^/${escapedCloud}/image/upload/(v\\d+/)?valoraciones(_janes)?/`);
-        if (!regex.test(url.pathname)) {
-          return { statusCode: 400, body: JSON.stringify({ error: "La imagen no proviene del preset autorizado" }) };
-        }
-        safePhotoURL = photoURL;
-      } catch (err) {
-        return { statusCode: 400, body: JSON.stringify({ error: "URL de imagen inválida" }) };
+      const url = new URL(photoURL);
+      if (url.protocol !== "https:" || url.hostname !== "res.cloudinary.com") {
+        return { statusCode: 400, body: JSON.stringify({ error: "Imagen no permitida" }) };
       }
+      safePhotoURL = photoURL;
     }
 
-    // --- Rate limiting: 1 valoración por minuto ---
+    // Rate limiting: 1 valoración por minuto
     const haceUnMinuto = Timestamp.fromMillis(Date.now() - 60 * 1000);
     const snapshot = await db
       .collection("valoraciones")
@@ -144,11 +100,9 @@ export async function handler(event) {
       .where("timestamp", ">", haceUnMinuto)
       .get();
 
-    if (!snapshot.empty) {
-      return { statusCode: 429, body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" }) };
-    }
+    if (!snapshot.empty) return { statusCode: 429, body: JSON.stringify({ error: "Ya enviaste una valoración hace poco" }) };
 
-    // --- Guardar en Firestore ---
+    // Guardar en Firestore
     const docRef = await db.collection("valoraciones").add({
       uid,
       place,
@@ -159,8 +113,6 @@ export async function handler(event) {
       timestamp: FieldValue.serverTimestamp(),
       aprobado: false,
     });
-
-    console.log("✅ Documento guardado con ID:", docRef.id);
 
     return { statusCode: 200, body: JSON.stringify({ id: docRef.id, success: true }) };
   } catch (err) {
