@@ -4,6 +4,7 @@
 
 [build.environment]
   SECRETS_SCAN_OMIT_PATHS = "valoraciones.js"
+  SECRETS_SCAN_OMIT_KEYS = "VITE_RECAPTCHA_SITE_KEY"
 
 # --- Redirecciones ---
 [[redirects]]
