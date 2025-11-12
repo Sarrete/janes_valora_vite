@@ -200,7 +200,7 @@
   <h2 data-i18n="reviews.title"></h2>
 
   <!-- Formulario -->
-  <form id="ratingForm" class="rating-form">
+  <form id="ratingForm" class="rating-form" novalidate>
     <!-- Nombre -->
     <label for="name" data-i18n="reviews.name"></label>
     <input 
@@ -214,12 +214,12 @@
 
     <!-- Valoración -->
     <label data-i18n="reviews.rating"></label>
-    <div id="ratingStars" class="stars">
-      <span class="star">★</span>
-      <span class="star">★</span>
-      <span class="star">★</span>
-      <span class="star">★</span>
-      <span class="star">★</span>
+    <div id="ratingStars" class="stars" role="radiogroup" aria-label="Valoración">
+      <button type="button" class="star" aria-label="1 estrella">★</button>
+      <button type="button" class="star" aria-label="2 estrellas">★</button>
+      <button type="button" class="star" aria-label="3 estrellas">★</button>
+      <button type="button" class="star" aria-label="4 estrellas">★</button>
+      <button type="button" class="star" aria-label="5 estrellas">★</button>
     </div>
 
     <!-- Comentario -->
@@ -241,7 +241,7 @@
       accept="image/png, image/jpeg, image/webp">
 
     <!-- Botón -->
-    <button type="submit" data-i18n="reviews.submit" aria-label="Enviar valoración"></button>
+    <button type="submit" data-i18n="reviews.submit" aria-label="Enviar valoración">Enviar</button>
   </form>
 
   <hr>
@@ -257,9 +257,31 @@
       Ver todas las valoraciones
     </button>
   </div>
-  
-  
+
+  <!-- Carga segura de reCAPTCHA en runtime (NO incrusta clave en el bundle).
+       El valor window.RECAPTCHA_SITE_KEY debe establecerse desde tu JS (p. ej. import.meta.env en main.js). -->
+  <script>
+    (function() {
+      try {
+        var key = window.RECAPTCHA_SITE_KEY; // debe establecerse en runtime desde tu JS
+        if (!key) {
+          // No hay clave: no cargamos reCAPTCHA ahora (no es un error)
+          console.warn("reCAPTCHA site key no definida en runtime (window.RECAPTCHA_SITE_KEY).");
+          return;
+        }
+        // Carga dinámica del script con la key en runtime
+        var s = document.createElement("script");
+        s.src = "https://www.google.com/recaptcha/api.js?render=" + encodeURIComponent(key);
+        s.async = true;
+        s.defer = true;
+        document.head.appendChild(s);
+      } catch (err) {
+        console.error("Error cargando reCAPTCHA:", err);
+      }
+    })();
+  </script>
 </section>
+
       
  <!-- Sección de contacto -->
     <section id="contacto" class="work-section section-5">
@@ -334,20 +356,3 @@
 
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
