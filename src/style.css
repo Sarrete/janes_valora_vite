@@ -393,6 +393,20 @@ element.style {
     border-radius: 5px;
 }
 
+.feedback-popup {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #333;
+  color: #fff;
+  padding: 1em 2em;
+  border-radius: 6px;
+  font-weight: bold;
+  z-index: 9999;
+}
+.feedback-popup.success { background: #28a745; }
+.feedback-popup.error { background: #dc3545; }
+
 /* === ESTILOS VALORACIONES OPTIMIZADOS === */
 .reviews-list {
   display: grid;
