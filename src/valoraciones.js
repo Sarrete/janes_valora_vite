@@ -178,30 +178,30 @@ form.addEventListener("submit", async (e) => {
 
     console.log("✅ Token reCAPTCHA generado:", token);
 
-    // Enviar valoración con token
-    const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        uid: currentUser.uid,
-        place: "default",
-        nombre: name,
-        comentario: comment || "Sin comentario",
-        rating: currentRating,
-        photoURL: photoURL || null,
-        recaptchaToken: token
-      })
-    });
+  // Enviar valoración con token
+const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({
+    uid: currentUser.uid,
+    place: "default",
+    nombre: name,
+    comentario: comment || "Sin comentario",
+    rating: currentRating,
+    photoURL: photoURL || null,
+    recaptchaToken: token
+  })
+});
 
-    const dataValoracion = await resValoracion.json().catch(() => ({}));
+const dataValoracion = await resValoracion.json().catch(() => ({}));
 
-    if (!resValoracion.ok) {
-      console.warn("⚠ save-valoracion falló", dataValoracion);
-      mostrarPopup(`⚠ Error: ${dataValoracion.error || "No se pudo enviar la valoración"}`);
-      return;
-    }
+if (!resValoracion.ok) {
+  console.warn("⚠ save-valoracion falló", dataValoracion);
+  throw new Error(dataValoracion.error || "No se pudo enviar la valoración");
+}
 
-    mostrarPopup("✅ Valoración enviada correctamente. Se revisará antes de publicarse.");
+// Mensaje OK si TODO salió bien
+mostrarPopup("✅ Valoración enviada correctamente. Se revisará antes de publicarse.");
 
     // Enviar correo (puede fallar)
     fetch("/.netlify/functions/send-email", {
