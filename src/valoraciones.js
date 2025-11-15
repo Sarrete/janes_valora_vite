@@ -110,18 +110,20 @@ const toBase64 = (file) =>
 
 // --- Traducciones ---
 let t = {};
-async function loadTranslations() {
-  const pageLang = document.documentElement.lang || "es";
+async function loadTranslations(lang = "es") {
   try {
-    const res = await fetch(`/locales/${pageLang}.json`);
+    const res = await fetch(`/locales/${lang}.json`);
     t = await res.json();
+    console.log("✅ Traducciones cargadas para:", lang);
   } catch (err) {
     console.error("Error cargando traducciones, usando español por defecto", err);
     const res = await fetch(`/locales/es.json`);
     t = await res.json();
   }
 }
-loadTranslations();
+
+// Selecciona el menú idioma
+const langSelector = document.getElementById("langSelector");
 
 // Inicializar con el idioma actual del <html>
 loadTranslations(document.documentElement.lang || "es");
