@@ -122,8 +122,8 @@ async function loadTranslations(lang = "es") {
   }
 }
 
-// Selecciona el menú idioma
-const langSelector = document.getElementById("langSelector");
+// Selecciona el menú idioma (usa el id correcto del HTML)
+const langSelector = document.getElementById("language-selector");
 
 // Inicializar con el idioma actual del <html>
 loadTranslations(document.documentElement.lang || "es");
