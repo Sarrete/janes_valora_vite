@@ -108,13 +108,29 @@ const toBase64 = (file) =>
   script.onload = () => console.log("✅ reCAPTCHA cargado de forma segura");
 })();
 
-// Mostrar popup informativo
-function mostrarPopup(mensaje) {
+// --- Traducciones ---
+let t = {};
+async function loadTranslations() {
+  const pageLang = document.documentElement.lang || "es";
+  try {
+    const res = await fetch(`/locales/${pageLang}.json`);
+    t = await res.json();
+  } catch (err) {
+    console.error("Error cargando traducciones, usando español por defecto", err);
+    const res = await fetch(`/locales/es.json`);
+    t = await res.json();
+  }
+}
+loadTranslations();
+
+// --- Feedback popup ---
+function mostrarMensaje(key, type = "error") {
+  const mensaje = t[key] || key;
   const popup = document.createElement("div");
-  popup.className = "popup";
+  popup.className = "feedback-popup " + type;
   popup.textContent = mensaje;
   document.body.appendChild(popup);
-  setTimeout(() => popup.remove(), 3000);
+  setTimeout(() => popup.remove(), 4000);
 }
 
 // ENVÍO FORMULARIO
@@ -122,7 +138,7 @@ form.addEventListener("submit", async (e) => {
   e.preventDefault();
   if (isSubmitting) return;
   if (!currentUser) {
-    mostrarPopup("⚠ Espera, usuario no autenticado aún.");
+    mostrarMensaje("error", "error");
     return;
   }
 
@@ -138,10 +154,10 @@ form.addEventListener("submit", async (e) => {
     const comment = sanitizeText(rawComment);
     const photoFile = document.getElementById("photo").files[0];
 
-    if (!name) throw new Error("Por favor, ingresa tu nombre.");
-    if (currentRating === 0) throw new Error("Por favor, selecciona una valoración.");
+    if (!name) throw new Error("nameRequired");
+    if (currentRating === 0) throw new Error("ratingRequired");
     if (!isSafeText(name) || !isSafeText(comment)) {
-      throw new Error("El texto contiene contenido potencialmente peligroso.");
+      throw new Error("invalidText");
     }
 
     // Validación de imagen
@@ -149,10 +165,8 @@ form.addEventListener("submit", async (e) => {
     const ALLOWED = ["image/jpeg", "image/png", "image/webp"];
     let photoURL = null;
     if (photoFile) {
-      if (!ALLOWED.includes(photoFile.type))
-        throw new Error("Formato no permitido. Usa JPG, PNG o WEBP.");
-      if (photoFile.size > MAX_BYTES)
-        throw new Error("La imagen es demasiado grande (máx 5MB).");
+      if (!ALLOWED.includes(photoFile.type)) throw new Error("photoFormat");
+      if (photoFile.size > MAX_BYTES) throw new Error("photoSize");
 
       const base64File = await toBase64(photoFile);
       const res = await fetch("/.netlify/functions/upload-image", {
@@ -161,12 +175,12 @@ form.addEventListener("submit", async (e) => {
         body: JSON.stringify({ file: base64File })
       });
       const json = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(json.error || "Error subiendo imagen");
+      if (!res.ok) throw new Error(json.error || "error");
       photoURL = json.secure_url;
     }
 
     // --- Generar token reCAPTCHA ---
-    if (!window.grecaptcha) throw new Error("reCAPTCHA no está listo");
+    if (!window.grecaptcha) throw new Error("recaptcha");
 
     const token = await new Promise((resolve, reject) => {
       grecaptcha.ready(() => {
@@ -178,30 +192,30 @@ form.addEventListener("submit", async (e) => {
 
     console.log("✅ Token reCAPTCHA generado:", token);
 
-  // Enviar valoración con token
-const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
-  method: "POST",
-  headers: { "Content-Type": "application/json" },
-  body: JSON.stringify({
-    uid: currentUser.uid,
-    place: "default",
-    nombre: name,
-    comentario: comment || "Sin comentario",
-    rating: currentRating,
-    photoURL: photoURL || null,
-    recaptchaToken: token
-  })
-});
+    // Enviar valoración con token
+    const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        uid: currentUser.uid,
+        place: "default",
+        nombre: name,
+        comentario: comment || "Sin comentario",
+        rating: currentRating,
+        photoURL: photoURL || null,
+        recaptchaToken: token
+      })
+    });
 
-const dataValoracion = await resValoracion.json().catch(() => ({}));
+    const dataValoracion = await resValoracion.json().catch(() => ({}));
 
-if (!resValoracion.ok) {
-  console.warn("⚠ save-valoracion falló", dataValoracion);
-  throw new Error(dataValoracion.error || "No se pudo enviar la valoración");
-}
+    if (!resValoracion.ok) {
+      console.warn("⚠ save-valoracion falló", dataValoracion);
+      throw new Error(dataValoracion.error || "error");
+    }
 
-// Mensaje OK si TODO salió bien
-mostrarPopup("✅ Valoración enviada correctamente. Se revisará antes de publicarse.");
+    // Mensaje OK si TODO salió bien
+    mostrarMensaje("success", "success");
 
     // Enviar correo (puede fallar)
     fetch("/.netlify/functions/send-email", {
@@ -216,7 +230,7 @@ mostrarPopup("✅ Valoración enviada correctamente. Se revisará antes de publi
 
   } catch (err) {
     console.error("❌ Error general:", err);
-    mostrarPopup(err.message || "Error al enviar la valoración.");
+    mostrarMensaje(err.message || "error", "error");
   } finally {
     isSubmitting = false;
     submitBtn.disabled = false;
