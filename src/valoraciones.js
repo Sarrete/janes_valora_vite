@@ -123,6 +123,18 @@ async function loadTranslations() {
 }
 loadTranslations();
 
+// Inicializar con el idioma actual del <html>
+loadTranslations(document.documentElement.lang || "es");
+
+// Escuchar cambios en el menú idioma
+if (langSelector) {
+  langSelector.addEventListener("change", (e) => {
+    const newLang = e.target.value;
+    document.documentElement.lang = newLang; // actualiza <html lang="">
+    loadTranslations(newLang); // recarga traducciones
+  });
+}
+
 // --- Feedback popup ---
 function mostrarMensaje(key, type = "error") {
   const mensaje = t[key] || key;
