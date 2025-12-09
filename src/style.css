@@ -636,8 +636,10 @@ footer {
     left: 0;
     /* Estilos para el pie de p gina */
     display: flex; /* Usar flexbox para alinear los elementos */
-    justify-content: space-around; /* Distribuir espacio entre los elementos */
-    align-items: center; /* Alinear verticalmente */
+    align-items: center;
+    justify-content: flex-end;
+    flex-wrap: nowrap;
+    flex-direction: column;
 }
 
 .footer-logo {
