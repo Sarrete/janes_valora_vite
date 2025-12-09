@@ -51,7 +51,6 @@ let currentUser = null;
 onAuthStateChanged(auth, (user) => {
   if (user) {
     currentUser = user;
-    console.log("✅ Usuario anónimo listo:", user.uid);
   }
 });
 
@@ -105,7 +104,10 @@ const toBase64 = (file) =>
   script.async = true;
   document.head.appendChild(script);
 
-  script.onload = () => console.log("✅ reCAPTCHA cargado de forma segura");
+  // Eliminado el console.log en producción
+  script.onload = () => {
+    // Puedes dejarlo vacío o añadir otra lógica si lo necesitas
+  };
 })();
 
 // --- Traducciones ---
@@ -114,7 +116,6 @@ async function loadTranslations(lang = "es") {
   try {
     const res = await fetch(`/locales/${lang}.json`);
     t = await res.json();
-    console.log("✅ Traducciones cargadas para:", lang);
   } catch (err) {
     console.error("Error cargando traducciones, usando español por defecto", err);
     const res = await fetch(`/locales/es.json`);
@@ -204,7 +205,6 @@ form.addEventListener("submit", async (e) => {
       });
     });
 
-    console.log("✅ Token reCAPTCHA generado:", token);
 
     // Enviar valoración con token
     const resValoracion = await fetch("/.netlify/functions/save-valoracion", {
