@@ -1,40 +1,133 @@
 // functions/send-email.js
-import nodemailer from 'nodemailer';
+import nodemailer from "nodemailer";
+
+// Rate limit en memoria (best-effort)
+const requestsMap = new Map();
+const LIMIT = 5;
+const WINDOW_MS = 60 * 1000;
+
+function rateLimit(ip) {
+  const now = Date.now();
+  const timestamps = requestsMap.get(ip) || [];
+  const recent = timestamps.filter(ts => now - ts < WINDOW_MS);
+  recent.push(now);
+  requestsMap.set(ip, recent);
+  return recent.length <= LIMIT;
+}
+
+// Escape HTML para evitar inyección
+function escapeHTML(str = "") {
+  return str.replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;"
+  }[char]));
+}
+
+const securityHeaders = {
+  "Content-Type": "application/json; charset=utf-8",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "no-referrer",
+};
 
 export async function handler(event) {
   try {
-    if (event.httpMethod !== 'POST') {
+    if (event.httpMethod !== "POST") {
       return {
         statusCode: 405,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Method Not Allowed' })
+        headers: securityHeaders,
+        body: JSON.stringify({ error: "Method Not Allowed" }),
       };
     }
 
-    // Parsear datos del body
-    const { nombre, comentario, rating } = JSON.parse(event.body || '{}');
+    const origin = event.headers.origin || "";
+    const allowedOrigins = [
+      process.env.ALLOWED_ORIGIN || "https://janesenginyeria.netlify.app",
+      "https://clever-malabi-a1eea4.netlify.app",
+    ];
 
-    if (!nombre || typeof rating === 'undefined') {
-      console.warn("⚠️ Datos incompletos recibidos:", { nombre, comentario, rating });
+    const headers = { ...securityHeaders };
+    if (allowedOrigins.includes(origin)) {
+      headers["Access-Control-Allow-Origin"] = origin;
+    }
+
+    const ip =
+      event.headers["x-forwarded-for"]?.split(",")[0] || "unknown";
+
+    if (!rateLimit(ip)) {
+      return {
+        statusCode: 429,
+        headers,
+        body: JSON.stringify({
+          error: "Demasiadas solicitudes, espera un momento",
+        }),
+      };
+    }
+
+    // Parse body
+    let nombre, comentario, rating;
+    try {
+      const body = JSON.parse(event.body || "{}");
+      nombre = body.nombre;
+      comentario = body.comentario;
+      rating = body.rating;
+    } catch {
       return {
         statusCode: 400,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Faltan datos obligatorios' })
+        headers,
+        body: JSON.stringify({ error: "Body inválido" }),
       };
     }
 
-    // Si comentario viene vacío, usar un valor por defecto
-    const safeComentario = comentario && comentario.trim() !== '' ? comentario : 'Sin comentario';
+    // Validaciones estrictas
+    if (
+      typeof nombre !== "string" ||
+      nombre.trim().length === 0 ||
+      nombre.length > 60 ||
+      typeof rating !== "number" ||
+      rating < 1 ||
+      rating > 5 ||
+      (comentario && typeof comentario !== "string") ||
+      (comentario && comentario.length > 1000)
+    ) {
+      return {
+        statusCode: 400,
+        headers,
+        body: JSON.stringify({ error: "Datos no válidos" }),
+      };
+    }
 
-    // Leer credenciales de entorno
-    const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, NOTIFY_EMAIL } = process.env;
+    const safeNombre = escapeHTML(nombre.trim());
+    const safeComentario =
+      comentario && comentario.trim() !== ""
+        ? escapeHTML(comentario.trim())
+        : "Sin comentario";
 
-    if (!SMTP_HOST || !SMTP_PORT || !SMTP_USER || !SMTP_PASS || !NOTIFY_EMAIL) {
-      console.error("❌ Faltan variables de entorno");
+    // Variables SMTP
+    const {
+      SMTP_HOST,
+      SMTP_PORT,
+      SMTP_USER,
+      SMTP_PASS,
+      NOTIFY_EMAIL,
+    } = process.env;
+
+    if (
+      !SMTP_HOST ||
+      !SMTP_PORT ||
+      !SMTP_USER ||
+      !SMTP_PASS ||
+      !NOTIFY_EMAIL
+    ) {
       return {
         statusCode: 500,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ error: 'Faltan variables de entorno' })
+        headers,
+        body: JSON.stringify({
+          error: "Configuración SMTP incompleta",
+        }),
       };
     }
 
@@ -44,38 +137,33 @@ export async function handler(event) {
       secure: Number(SMTP_PORT) === 465,
       auth: {
         user: SMTP_USER,
-        pass: SMTP_PASS
-      }
+        pass: SMTP_PASS,
+      },
     });
 
-    await transporter.verify();
-
-    const info = await transporter.sendMail({
+    await transporter.sendMail({
       from: `"Valoraciones Web" <${SMTP_USER}>`,
       to: NOTIFY_EMAIL,
-      subject: 'Nueva valoración recibida',
+      subject: "Nueva valoración recibida",
       html: `
         <h2>Nueva valoración</h2>
-        <p><strong>Nombre:</strong> ${nombre}</p>
+        <p><strong>Nombre:</strong> ${safeNombre}</p>
         <p><strong>Comentario:</strong> ${safeComentario}</p>
         <p><strong>Rating:</strong> ${rating} ⭐</p>
-      `
+      `,
     });
-
-    console.log("📩 Correo enviado con éxito:", info.messageId);
 
     return {
       statusCode: 200,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ success: true, id: info.messageId })
+      headers,
+      body: JSON.stringify({ success: true }),
     };
-
   } catch (err) {
-    console.error("❌ Error enviando correo:", err.message);
+    console.error("❌ send-email error:", err);
     return {
       statusCode: 500,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ error: 'Error interno del servidor' })
+      headers: securityHeaders,
+      body: JSON.stringify({ error: "Error interno del servidor" }),
     };
   }
 }
