@@ -36,7 +36,7 @@ setupCounter(document.querySelector('#counter'))
 ================================ */
 
 document.addEventListener("DOMContentLoaded", () => {
-  const valoracionSection = document.getElementById("valoracion")
+  const valoracionSection = document.getElementById("valoraciones")
   if (!valoracionSection) return
 
   const observer = new IntersectionObserver(
