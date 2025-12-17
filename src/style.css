@@ -654,7 +654,7 @@ footer {
     /* Estilos para el pie de p gina */
     display: flex; /* Usar flexbox para alinear los elementos */
     align-items: center;
-    justify-content: justify-content;
+    justify-content: space-around;
     flex-direction: row;
 }
 
