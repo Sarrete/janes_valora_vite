@@ -341,3 +341,33 @@ if (verTodasBtn) {
     renderReviews();
   });
 }
+/* ================================
+   CONTROL VISIBILIDAD reCAPTCHA v3
+================================ */
+
+console.log("✅ valoraciones.js cargado")
+
+const valoracionesSection = document.getElementById("valoraciones")
+
+if (!valoracionesSection) {
+  console.warn("❌ No se encontró la sección #valoraciones")
+} else {
+  console.log("🔎 Sección #valoraciones detectada")
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.body.classList.add("grecaptcha-visible")
+          console.log("🟢 reCAPTCHA VISIBLE")
+        } else {
+          document.body.classList.remove("grecaptcha-visible")
+          console.log("🔴 reCAPTCHA OCULTO")
+        }
+      })
+    },
+    { threshold: 0.3 }
+  )
+
+  observer.observe(valoracionesSection)
+}
