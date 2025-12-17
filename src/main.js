@@ -12,9 +12,17 @@ document.querySelector('#app').innerHTML = `
       <img src="${javascriptLogo}" class="logo vanilla" alt="JavaScript logo" />
     </a>
     <h1>Hello Vite!</h1>
+
+    <!-- SIMULACIÓN de la sección de valoración -->
+    <section id="valoracion" style="margin-top: 120vh;">
+      <h2>Valoración</h2>
+      <p>Aquí va el formulario protegido por reCAPTCHA</p>
+    </section>
+
     <div class="card">
       <button id="counter" type="button"></button>
     </div>
+
     <p class="read-the-docs">
       Click on the Vite logo to learn more
     </p>
@@ -22,3 +30,27 @@ document.querySelector('#app').innerHTML = `
 `
 
 setupCounter(document.querySelector('#counter'))
+
+/* ================================
+   CONTROL VISIBILIDAD reCAPTCHA
+================================ */
+
+document.addEventListener("DOMContentLoaded", () => {
+  const valoracionSection = document.getElementById("valoracion")
+  if (!valoracionSection) return
+
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          document.body.classList.add("grecaptcha-visible")
+        } else {
+          document.body.classList.remove("grecaptcha-visible")
+        }
+      })
+    },
+    { threshold: 0.3 }
+  )
+
+  observer.observe(valoracionSection)
+})
