@@ -345,24 +345,16 @@ if (verTodasBtn) {
    CONTROL VISIBILIDAD reCAPTCHA v3
 ================================ */
 
-console.log("✅ valoraciones.js cargado")
-
 const valoracionesSection = document.getElementById("valoraciones")
 
-if (!valoracionesSection) {
-  console.warn("❌ No se encontró la sección #valoraciones")
-} else {
-  console.log("🔎 Sección #valoraciones detectada")
-
+if (valoracionesSection) {
   const observer = new IntersectionObserver(
     (entries) => {
       entries.forEach(entry => {
         if (entry.isIntersecting) {
           document.body.classList.add("grecaptcha-visible")
-          console.log("🟢 reCAPTCHA VISIBLE")
         } else {
           document.body.classList.remove("grecaptcha-visible")
-          console.log("🔴 reCAPTCHA OCULTO")
         }
       })
     },
