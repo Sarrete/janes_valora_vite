@@ -14,7 +14,7 @@ document.querySelector('#app').innerHTML = `
     <h1>Hello Vite!</h1>
 
     <!-- SIMULACIÓN de la sección de valoración -->
-    <section id="valoracion" style="margin-top: 120vh;">
+    <section id="valoraciones" style="margin-top: 120vh;">
       <h2>Valoración</h2>
       <p>Aquí va el formulario protegido por reCAPTCHA</p>
     </section>
