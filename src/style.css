@@ -551,6 +551,23 @@ element.style {
   line-height: 1.4;
 }
 
+/* Badge oculto por defecto */
+.grecaptcha-badge {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Visible SOLO cuando la sección está activa */
+.grecaptcha-visible .grecaptcha-badge {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.grecaptcha-visible .grecaptcha-badge:hover {
+  opacity: 1;
+}
+
 
 /* Responsive */
 @media (max-width: 768px) {
