@@ -568,6 +568,13 @@ element.style {
   opacity: 1;
 }
 
+/* MÓVIL: mover el badge por encima del footer */
+@media (max-width: 768px) {
+  .grecaptcha-badge {
+    bottom: 80px !important; /* ajusta según altura del footer */
+    right: 14px !important;
+  }
+}
 
 /* Responsive */
 @media (max-width: 768px) {
