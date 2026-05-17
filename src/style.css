@@ -551,6 +551,30 @@ element.style {
   line-height: 1.4;
 }
 
+/* Badge oculto por defecto */
+.grecaptcha-badge {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+
+/* Visible SOLO cuando la sección está activa */
+.grecaptcha-visible .grecaptcha-badge {
+  opacity: 0.6;
+  pointer-events: auto;
+}
+
+.grecaptcha-visible .grecaptcha-badge:hover {
+  opacity: 1;
+}
+
+/* MÓVIL: mover el badge por encima del footer */
+@media (max-width: 768px) {
+  .grecaptcha-badge {
+    bottom: 102px !important; /* ajusta según altura del footer */
+    right: 0px !important;
+  }
+}
 
 /* Responsive */
 @media (max-width: 768px) {
@@ -636,8 +660,9 @@ footer {
     left: 0;
     /* Estilos para el pie de p gina */
     display: flex; /* Usar flexbox para alinear los elementos */
-    justify-content: space-around; /* Distribuir espacio entre los elementos */
-    align-items: center; /* Alinear verticalmente */
+    align-items: center;
+    justify-content: space-around;
+    flex-direction: row;
 }
 
 .footer-logo {
