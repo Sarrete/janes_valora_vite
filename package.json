@@ -13,7 +13,7 @@
     "vite": "^8.0.14"
   },
   "dependencies": {
-    "firebase": "^12.13.0",
+    "firebase": "^12.14.0",
     "firebase-admin": "^13.10.0",
     "nodemailer": "^8.0.7",
     "react": "^19.2.6",
